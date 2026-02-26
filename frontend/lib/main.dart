@@ -459,8 +459,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 );
               },
               backgroundColor: const Color(0xFF2E7D32),
-              foregroundColor: Colors.white,
-              child: const Icon(Icons.mic),
+              child: const Icon(Icons.smart_toy),
             ),
           ],
         ),

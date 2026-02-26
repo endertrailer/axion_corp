@@ -3,6 +3,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../api_service.dart';
+import '../l10n/translations.dart';
 
 class ChatMessage {
   final String text;
@@ -31,9 +32,7 @@ class ChatDialog extends StatefulWidget {
 
 class _ChatDialogState extends State<ChatDialog> {
   final TextEditingController _textController = TextEditingController();
-  final List<ChatMessage> _messages = [
-    ChatMessage(text: 'Namaskaar! How can I help you with your farm today?', isUser: false),
-  ];
+  final List<ChatMessage> _messages = [];
   
   bool _isTyping = false;
   bool _isListening = false;
@@ -42,6 +41,9 @@ class _ChatDialogState extends State<ChatDialog> {
   @override
   void initState() {
     super.initState();
+    _messages.add(
+      ChatMessage(text: AppTranslations.t('assistant_hello', widget.lang), isUser: false),
+    );
     _initStt();
   }
 
@@ -72,7 +74,7 @@ class _ChatDialogState extends State<ChatDialog> {
           onResult: (val) {
             if (val.finalResult) {
               setState(() => _isListening = false);
-              _sendMessage(val.recognizedWords);
+              _sendMessage(val.recognizedWords, isVoice: true);
             }
           },
           localeId: sttLocaleId,
@@ -86,7 +88,7 @@ class _ChatDialogState extends State<ChatDialog> {
     setState(() => _isListening = false);
   }
   
-  void _sendMessage(String text) async {
+  void _sendMessage(String text, {bool isVoice = false}) async {
     if (text.trim().isEmpty) return;
     
     setState(() {
@@ -112,7 +114,9 @@ class _ChatDialogState extends State<ChatDialog> {
       }
 
       await widget.flutterTts.stop();
-      await widget.flutterTts.speak(reply);
+      if (isVoice) {
+        await widget.flutterTts.speak(reply);
+      }
 
     } catch (e) {
       if (mounted) {
@@ -234,18 +238,18 @@ class _ChatDialogState extends State<ChatDialog> {
             child: Row(
               children: [
                 ActionChip(
-                  label: const Text('Weather check'),
-                  onPressed: () => _sendMessage('Weather check'),
+                  label: Text(AppTranslations.t('weather_check', widget.lang)),
+                  onPressed: () => _sendMessage(AppTranslations.t('weather_check', widget.lang)),
                 ),
                 const SizedBox(width: 8),
                 ActionChip(
-                  label: const Text('What should I do?'),
-                  onPressed: () => _sendMessage('What should I do?'),
+                  label: Text(AppTranslations.t('what_should_i_do', widget.lang)),
+                  onPressed: () => _sendMessage(AppTranslations.t('what_should_i_do', widget.lang)),
                 ),
                 const SizedBox(width: 8),
                 ActionChip(
-                  label: const Text('Market prices'),
-                  onPressed: () => _sendMessage('Market prices'),
+                  label: Text(AppTranslations.t('market_prices_action', widget.lang)),
+                  onPressed: () => _sendMessage(AppTranslations.t('market_prices_action', widget.lang)),
                 ),
               ],
             ),
@@ -271,7 +275,7 @@ class _ChatDialogState extends State<ChatDialog> {
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: 'Type your message...',
+                      hintText: AppTranslations.t('type_message', widget.lang),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,
@@ -280,7 +284,7 @@ class _ChatDialogState extends State<ChatDialog> {
                       fillColor: Colors.grey[100],
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
-                    onSubmitted: _sendMessage,
+                    onSubmitted: (val) => _sendMessage(val, isVoice: false),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -295,7 +299,7 @@ class _ChatDialogState extends State<ChatDialog> {
                     ),
                     onPressed: () {
                       if (_isTyping) {
-                        _sendMessage(_textController.text);
+                        _sendMessage(_textController.text, isVoice: false);
                       } else {
                         if (_isListening) {
                           _stopListening();

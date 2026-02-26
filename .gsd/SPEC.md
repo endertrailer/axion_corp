@@ -12,6 +12,7 @@ Transform AgriChain into a fully App-Wide Native Language Engine, ensuring that 
 4. **[Phase 2]** Create an Agricultural Voice AI Assistant that farmers can converse with using Speech-to-Text (STT), maintaining context of the recommended data.
 5. **[Phase 2]** Restructure UI: Float an LLM Assistant FAB (Floating Action Button) in the bottom right, and move the "Change Location" button to the bottom left.
 6. **[Phase 3]** Build an Interactive Chatbot Dialog Interface: When the Assistant FAB is tapped, launch a dialog box containing a chat history, text input field, and voice chat integration.
+7. **[Phase 4]** Chat UX Polish: Ensure fully localized UI texts inside the Chatbot, correct the home FAB icon to represent "Chat", and restrict TTS audio playback to *only* trigger when responding to voice inputs.
 
 ## Non-Goals (Out of Scope)
 - Adding languages outside of the 22 Indian Scheduled Languages + English.
@@ -31,6 +32,9 @@ Farmers and agricultural logistics personnel who are primarily comfortable in th
 - [x] **[Phase 2]** A farmer can tap the newly positioned bottom-right floating button to trigger STT and speak to the LLM.
 - [x] **[Phase 2]** The LLM responds contextually incorporating the active farmer recommendations and converses entirely in the natively selected language.
 - [x] **[Phase 2]** The 'Change Location' button is properly anchored to the bottom-left of the screen.
-- [ ] **[Phase 3]** Tapping the AI Assistant button opens a chat dialog / bottom sheet with a conversation history.
-- [ ] **[Phase 3]** The dialog supports both text input (keyboard) and voice input (STT microphone).
-- [ ] **[Phase 3]** Quick action chips (e.g. "What should I do?", "Weather context") are available above the input area.
+- [x] **[Phase 3]** Tapping the AI Assistant button opens a chat dialog / bottom sheet with a conversation history.
+- [x] **[Phase 3]** The dialog supports both text input (keyboard) and voice input (STT microphone).
+- [x] **[Phase 3]** Quick action chips (e.g. "What should I do?", "Weather context") are available above the input area.
+- [x] **[Phase 4]** The Chat Dialog's UI text strings accurately translate to the active language.
+- [x] **[Phase 4]** The Dashboard Assistant Button displays an appropriate chatbot/assistant icon, not strictly a microphone.
+- [x] **[Phase 4]** The LLM plays TTS audio *only* if the user initiated the prompt via STT, remaining silent for text submissions.

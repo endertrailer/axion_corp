@@ -33,3 +33,13 @@
 2. The UI must match a modern standard digital assistant interface (Header bar, scrollable message list, input area at the bottom).
 3. The input area must contain both a text field and a submit/microphone button for dual modalities.
 4. Chat bubbles must show the user's queries and the AI's contextual responses, keeping track of history for the session.
+
+### Phase 4: Chatbot Polish & Bug Fixes
+**Status**: ✅ Complete
+**Objective**: Fix the reported bugs in the Chatbot interface to ensure robust localization, stable backend connection, and accurate input-mode audio feedback.
+
+**Must-Haves**:
+1. All hardcoded English strings in the `ChatDialog` must be translated using `AppTranslations.t(key, _lang)` or passed translation context, including the initial welcome message.
+2. Restart the Go backend process using the updated binary to eliminate the missing Endpoint `404` error for `/api/v1/chat`.
+3. Change the Home Screen's `FloatingActionButton` icon from `Icons.mic` to `Icons.smart_toy` or `Icons.chat` to accurately reflect its new Chat interface behavior.
+4. Modify the TTS logic so the Assistant's voice is *only* synthesized out loud if the preceding user query was inputted via Voice (Mic), remaining silent if inputted via Keyboard.
