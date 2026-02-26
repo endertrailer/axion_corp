@@ -38,7 +38,6 @@ func main() {
 	db, err = sqlx.Connect("postgres", dsn)
 	if err != nil {
 		log.Printf("WARNING: Could not connect to PostgreSQL (%v). Running in demo mode with fallback data.\n", err)
-		// We continue anyway – handlers will use dummy data when db is nil.
 	}
 
 	port := os.Getenv("PORT")
@@ -48,12 +47,10 @@ func main() {
 
 	r := gin.Default()
 
-	// Health check
 	r.GET("/api/v1/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "time": time.Now()})
 	})
 
-	// Core recommendation endpoint
 	r.GET("/api/v1/recommendation", handleRecommendation)
 
 	log.Printf("🚀 AgriChain API listening on 0.0.0.0:%s\n", port)
@@ -63,7 +60,7 @@ func main() {
 }
 
 // ══════════════════════════════════════════════
-//  RECOMMENDATION HANDLER
+//  RECOMMENDATION HANDLER (Phase 2 – Staggering + Confidence)
 // ══════════════════════════════════════════════
 
 func handleRecommendation(c *gin.Context) {
@@ -77,11 +74,11 @@ func handleRecommendation(c *gin.Context) {
 		return
 	}
 
-	// ── Step 1: Fetch farmer + crop from DB (with fallback) ──
+	// ── Step 1: Fetch farmer + crop ──
 	farmer := fetchFarmer(farmerID)
 	crop := fetchCrop(cropID)
 
-	// Override farmer location with live GPS coordinates if provided
+	// Override location with live GPS if provided
 	if latStr := c.Query("lat"); latStr != "" {
 		if lat, err := strconv.ParseFloat(latStr, 64); err == nil {
 			farmer.LocationLat = lat
@@ -100,32 +97,61 @@ func handleRecommendation(c *gin.Context) {
 	var markets []MandiPrice
 
 	wg.Add(2)
-
-	// Goroutine 1 – Weather from Open-Meteo
 	go func() {
 		defer wg.Done()
 		weather = fetchWeather(farmer.LocationLat, farmer.LocationLon, crop.IdealTemp)
 	}()
-
-	// Goroutine 2 – Live market prices
 	go func() {
 		defer wg.Done()
 		markets = fetchMarketPrices(cropID)
 	}()
-
 	wg.Wait()
 
 	// ── Step 3: Compute transit times + market scores ──
 	marketOptions := computeMarketScores(farmer, crop, markets, weather)
 
-	// ── Step 4: Pick best market + decide action ──
 	sort.Slice(marketOptions, func(i, j int) bool {
 		return marketOptions[i].MarketScore > marketOptions[j].MarketScore
 	})
 
 	bestMarket := marketOptions[0]
 
-	action, why := decideAction(crop, weather, bestMarket)
+	// ── Step 4: Confidence Bands (±10%) ──
+	confidenceMin := math.Round(bestMarket.CurrentPrice*0.90*100) / 100
+	confidenceMax := math.Round(bestMarket.CurrentPrice*1.10*100) / 100
+
+	// ── Step 5: Staggering Protocol ──
+	// Check arrival volume trend for the best market
+	var bestTrend string
+	for _, m := range markets {
+		if m.MarketName == bestMarket.MarketName {
+			bestTrend = m.ArrivalVolumeTrend
+			break
+		}
+	}
+
+	var storageOpt *StorageOption
+	action, why := decideActionV2(crop, weather, bestMarket, bestTrend, confidenceMin, confidenceMax)
+
+	// If trend is HIGH → trigger staggering: find nearest cold storage
+	if bestTrend == "HIGH" {
+		action = "Delay & Store Locally"
+		storage := fetchNearestStorage(farmer.LocationLat, farmer.LocationLon)
+		storageOpt = &storage
+
+		why = fmt.Sprintf(
+			"1. Price is likely between ₹%.0f and ₹%.0f. However, due to a massive arrival surge at %s, we recommend storing at %s for ₹%.1f/kg to prevent distress sales. "+
+				"2. Current temperature (%.1f°C) with %s conditions. "+
+				"3. Once arrivals normalise, sell at %s for the best effective return (Market Score: %.0f). "+
+				"4. Storage at %s has %.0f MT capacity available at ₹%.1f/kg/day, located %.1f km from your farm.",
+			confidenceMin, confidenceMax,
+			bestMarket.MarketName,
+			storage.Name, storage.PricePerKg,
+			weather.CurrentTemp, weather.Condition,
+			bestMarket.MarketName, bestMarket.MarketScore,
+			storage.Name, storage.CapacityMT, storage.PricePerKg, storage.DistanceKm,
+		)
+	}
 
 	recommendation := Recommendation{
 		FarmerID:          farmerID,
@@ -133,9 +159,12 @@ func handleRecommendation(c *gin.Context) {
 		Action:            action,
 		RecommendedMarket: bestMarket.MarketName,
 		MarketScore:       math.Round(bestMarket.MarketScore*100) / 100,
+		ConfidenceBandMin: confidenceMin,
+		ConfidenceBandMax: confidenceMax,
 		Why:               why,
 		Weather:           weather,
 		Markets:           marketOptions,
+		Storage:           storageOpt,
 		GeneratedAt:       time.Now(),
 	}
 
@@ -157,7 +186,6 @@ func fetchFarmer(id string) Farmer {
 		}
 		log.Printf("⚠ DB fetch farmer failed: %v – using fallback", err)
 	}
-	// FALLBACK: realistic dummy farmer near New Delhi
 	return Farmer{
 		ID:          id,
 		LocationLat: 28.6139,
@@ -178,7 +206,6 @@ func fetchCrop(id string) Crop {
 		}
 		log.Printf("⚠ DB fetch crop failed: %v – using fallback", err)
 	}
-	// FALLBACK: Tomato
 	return Crop{
 		ID:                   id,
 		Name:                 "Tomato",
@@ -228,7 +255,6 @@ func fetchWeather(lat, lon, idealTemp float64) WeatherInfo {
 	}
 
 	log.Printf("⚠ Open-Meteo API failed – using fallback weather data")
-	// FALLBACK: realistic warm weather
 	return WeatherInfo{
 		CurrentTemp: 32.4,
 		Humidity:    68.0,
@@ -268,7 +294,7 @@ func fetchMarketPrices(cropID string) []MandiPrice {
 	if db != nil {
 		var prices []MandiPrice
 		err := db.Select(&prices,
-			"SELECT id, market_name, crop_id, current_price, market_lat, market_lon, timestamp FROM mandi_prices WHERE crop_id = $1 ORDER BY timestamp DESC LIMIT 10",
+			"SELECT id, market_name, crop_id, current_price, market_lat, market_lon, arrival_volume_trend, timestamp FROM mandi_prices WHERE crop_id = $1 ORDER BY timestamp DESC LIMIT 10",
 			cropID,
 		)
 		if err == nil && len(prices) > 0 {
@@ -276,12 +302,49 @@ func fetchMarketPrices(cropID string) []MandiPrice {
 		}
 		log.Printf("⚠ DB fetch mandi prices failed: %v – using fallback", err)
 	}
-	// FALLBACK: realistic market data for tomatoes in North India
+	// FALLBACK: realistic market data with volume trends
 	now := time.Now()
 	return []MandiPrice{
-		{ID: "m1", MarketName: "Azadpur Mandi", CropID: cropID, CurrentPrice: 2500, MarketLat: 28.7041, MarketLon: 77.1525, Timestamp: now},
-		{ID: "m2", MarketName: "Vashi APMC", CropID: cropID, CurrentPrice: 2800, MarketLat: 19.0728, MarketLon: 73.0169, Timestamp: now},
-		{ID: "m3", MarketName: "Ghazipur Mandi", CropID: cropID, CurrentPrice: 2350, MarketLat: 28.6233, MarketLon: 77.3230, Timestamp: now},
+		{ID: "m1", MarketName: "Azadpur Mandi", CropID: cropID, CurrentPrice: 2500, MarketLat: 28.7041, MarketLon: 77.1525, ArrivalVolumeTrend: "HIGH", Timestamp: now},
+		{ID: "m2", MarketName: "Vashi APMC", CropID: cropID, CurrentPrice: 2800, MarketLat: 19.0728, MarketLon: 73.0169, ArrivalVolumeTrend: "NORMAL", Timestamp: now},
+		{ID: "m3", MarketName: "Ghazipur Mandi", CropID: cropID, CurrentPrice: 2350, MarketLat: 28.6233, MarketLon: 77.3230, ArrivalVolumeTrend: "LOW", Timestamp: now},
+	}
+}
+
+// ── Storage Facilities ──────────────────────
+
+func fetchNearestStorage(farmerLat, farmerLon float64) StorageOption {
+	if db != nil {
+		var facilities []StorageFacility
+		err := db.Select(&facilities, "SELECT id, name, location_lat, location_lon, capacity_mt, price_per_kg FROM storage_facilities")
+		if err == nil && len(facilities) > 0 {
+			// Find nearest by haversine
+			bestIdx := 0
+			bestDist := math.MaxFloat64
+			for i, f := range facilities {
+				d := haversine(farmerLat, farmerLon, f.LocationLat, f.LocationLon)
+				if d < bestDist {
+					bestDist = d
+					bestIdx = i
+				}
+			}
+			f := facilities[bestIdx]
+			return StorageOption{
+				Name:       f.Name,
+				DistanceKm: math.Round(bestDist*10) / 10,
+				PricePerKg: f.PricePerKg,
+				CapacityMT: f.CapacityMT,
+			}
+		}
+		log.Printf("⚠ DB fetch storage failed: %v – using fallback", err)
+	}
+	// FALLBACK: realistic cold storage near Delhi
+	dist := haversine(farmerLat, farmerLon, 28.8526, 77.0932)
+	return StorageOption{
+		Name:       "Narela Cold Storage",
+		DistanceKm: math.Round(dist*10) / 10,
+		PricePerKg: 2.0,
+		CapacityMT: 500.0,
 	}
 }
 
@@ -301,24 +364,22 @@ func fetchTransitTime(farmerLat, farmerLon, marketLat, marketLon float64) float6
 		if readErr == nil {
 			var result struct {
 				Routes []struct {
-					Duration float64 `json:"duration"` // seconds
+					Duration float64 `json:"duration"`
 				} `json:"routes"`
 			}
 			if json.Unmarshal(body, &result) == nil && len(result.Routes) > 0 {
-				return result.Routes[0].Duration / 3600.0 // convert to hours
+				return result.Routes[0].Duration / 3600.0
 			}
 		}
 	}
 
 	log.Printf("⚠ OSRM API failed – using haversine fallback")
-	// FALLBACK: estimate transit time from haversine distance at 40 km/h average
 	dist := haversine(farmerLat, farmerLon, marketLat, marketLon)
-	return dist / 40.0 // hours
+	return dist / 40.0
 }
 
-// haversine computes distance in km between two lat/lon coordinates.
 func haversine(lat1, lon1, lat2, lon2 float64) float64 {
-	const R = 6371.0 // Earth radius km
+	const R = 6371.0
 	dLat := (lat2 - lat1) * math.Pi / 180.0
 	dLon := (lon2 - lon1) * math.Pi / 180.0
 	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
@@ -329,13 +390,12 @@ func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 }
 
 // ══════════════════════════════════════════════
-//  SCORING & DECISION ENGINE
+//  SCORING & DECISION ENGINE (Phase 2)
 // ══════════════════════════════════════════════
 
 func computeMarketScores(farmer Farmer, crop Crop, markets []MandiPrice, weather WeatherInfo) []MarketOption {
 	options := make([]MarketOption, 0, len(markets))
 
-	// Fetch transit times concurrently
 	type transitResult struct {
 		idx      int
 		duration float64
@@ -356,32 +416,40 @@ func computeMarketScores(farmer Farmer, crop Crop, markets []MandiPrice, weather
 
 	for i, m := range markets {
 		transitHr := transitTimes[i]
-		// Spoilage increases with temperature delta and transit time
 		tempFactor := 1.0 + math.Abs(weather.TempDelta)/10.0
 		spoilagePct := crop.BaselineSpoilageRate * transitHr * tempFactor
-
-		// Transport cost penalty: ₹50/hr of transit (fuel, labor, depreciation)
 		transportPenalty := transitHr * 50.0
-
-		// Market score: effective price after losses
 		effectivePrice := m.CurrentPrice * (1 - spoilagePct/100.0)
 		score := effectivePrice - transportPenalty
 
+		// Penalize HIGH arrival volume markets (glut discount)
+		if m.ArrivalVolumeTrend == "HIGH" {
+			score *= 0.85 // 15% penalty for oversupply risk
+		} else if m.ArrivalVolumeTrend == "LOW" {
+			score *= 1.05 // 5% bonus for undersupply opportunity
+		}
+
 		options = append(options, MarketOption{
-			MarketName:    m.MarketName,
-			CurrentPrice:  m.CurrentPrice,
-			TransitTimeHr: math.Round(transitHr*100) / 100,
-			SpoilageLoss:  math.Round(spoilagePct*100) / 100,
-			MarketScore:   math.Round(score*100) / 100,
+			MarketName:         m.MarketName,
+			CurrentPrice:       m.CurrentPrice,
+			TransitTimeHr:      math.Round(transitHr*100) / 100,
+			SpoilageLoss:       math.Round(spoilagePct*100) / 100,
+			MarketScore:        math.Round(score*100) / 100,
+			ArrivalVolumeTrend: m.ArrivalVolumeTrend,
 		})
 	}
 
 	return options
 }
 
-func decideAction(crop Crop, weather WeatherInfo, best MarketOption) (string, string) {
-	action := "Harvest Now"
+func decideActionV2(crop Crop, weather WeatherInfo, best MarketOption, trend string, cbMin, cbMax float64) (string, string) {
+	action := "Sell at Mandi"
 	var reasons []string
+
+	// Confidence band
+	reasons = append(reasons,
+		fmt.Sprintf("Price is likely between ₹%.0f and ₹%.0f at %s.",
+			cbMin, cbMax, best.MarketName))
 
 	// Temperature analysis
 	if math.Abs(weather.TempDelta) <= 5 {
@@ -390,31 +458,40 @@ func decideAction(crop Crop, weather WeatherInfo, best MarketOption) (string, st
 				weather.CurrentTemp, crop.IdealTemp, crop.Name))
 	} else if weather.TempDelta > 5 {
 		reasons = append(reasons,
-			fmt.Sprintf("It is %.1f°C hotter than the ideal %.1f°C for %s. Harvesting sooner reduces heat-related spoilage.",
-				weather.TempDelta, crop.IdealTemp, crop.Name))
+			fmt.Sprintf("It is %.1f°C hotter than ideal for %s. Harvesting sooner reduces heat-related spoilage.",
+				weather.TempDelta, crop.Name))
 	} else {
 		action = "Wait"
 		reasons = append(reasons,
-			fmt.Sprintf("Temperatures are %.1f°C below the ideal for %s. Waiting for warmer conditions may improve crop quality.",
+			fmt.Sprintf("Temperatures are %.1f°C below ideal for %s. Waiting for warmer conditions may improve quality.",
 				math.Abs(weather.TempDelta), crop.Name))
 	}
 
 	// Market analysis
 	reasons = append(reasons,
-		fmt.Sprintf("%s offers the best effective price at ₹%.0f/quintal after accounting for %.1f hrs transit and %.1f%% estimated spoilage (Market Score: %.0f).",
-			best.MarketName, best.CurrentPrice, best.TransitTimeHr, best.SpoilageLoss, best.MarketScore))
+		fmt.Sprintf("%s offers the best effective price at ₹%.0f/quintal (Market Score: %.0f, Transit: %.1f hrs, Spoilage: %.1f%%).",
+			best.MarketName, best.CurrentPrice, best.MarketScore, best.TransitTimeHr, best.SpoilageLoss))
+
+	// Volume trend warning
+	if trend == "HIGH" {
+		reasons = append(reasons,
+			fmt.Sprintf("⚠ HIGH arrival volumes detected at %s — risk of price depression due to oversupply.", best.MarketName))
+	} else if trend == "LOW" {
+		reasons = append(reasons,
+			fmt.Sprintf("LOW arrival volumes at %s — favorable conditions for higher realized prices.", best.MarketName))
+	}
 
 	// Humidity warning
 	if weather.Humidity > 80 {
 		reasons = append(reasons,
-			fmt.Sprintf("High humidity (%.0f%%) detected — consider immediate transport to reduce moisture-related decay.", weather.Humidity))
+			fmt.Sprintf("High humidity (%.0f%%) — consider immediate transport to reduce moisture-related decay.", weather.Humidity))
 	}
 
 	// Weather condition
 	if weather.Condition == "Rain" || weather.Condition == "Rain Showers" || weather.Condition == "Thunderstorm" {
 		action = "Wait"
 		reasons = append(reasons,
-			fmt.Sprintf("Current weather: %s. Delaying transport until conditions improve is recommended.", weather.Condition))
+			fmt.Sprintf("Current weather: %s. Delaying transport until conditions improve.", weather.Condition))
 	}
 
 	why := ""
