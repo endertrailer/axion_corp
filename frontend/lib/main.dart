@@ -7,8 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'api_service.dart';
 import 'l10n/translations.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:permission_handler/permission_handler.dart';
+import 'widgets/chat_dialog.dart';
 
 void main() {
   runApp(const AgriChainApp());
@@ -65,10 +64,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   FlutterTts flutterTts = FlutterTts();
   bool isSpeaking = false;
 
-  stt.SpeechToText _speechToText = stt.SpeechToText();
-  bool _isListening = false;
-  String _farmerQueryText = '';
-
   String _t(String key) => AppTranslations.t(key, _lang);
 
   @override
@@ -76,108 +71,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _loadLanguagePreference();
     _initTts();
-    _initStt();
   }
 
-  Future<void> _initStt() async {
-    // STT requires Audio permission aggressively on modern Android versions
-    var status = await Permission.microphone.status;
-    if (!status.isGranted) {
-      await Permission.microphone.request();
-    }
-    await _speechToText.initialize(
-      onError: (val) => print('STT Error: $val'),
-      onStatus: (val) {
-        print('STT Status: $val');
-        if (val == 'done' || val == 'notListening') {
-          setState(() => _isListening = false);
-        }
-      },
-    );
-  }
 
-  void _startListening() async {
-    if (!_isListening) {
-      bool available = await _speechToText.initialize();
-      if (available) {
-        setState(() {
-          _isListening = true;
-          _farmerQueryText = '';
-        });
-        
-        // Map local Active _lang (hi) to specific Flutter STT locale (hi-IN)
-        String sttLocaleId = _lang == 'en' ? 'en-IN' : '$_lang-IN';
-        
-        _speechToText.listen(
-          onResult: (val) {
-            setState(() {
-              _farmerQueryText = val.recognizedWords;
-              // If val.hasConfidenceRating && val.confidence > 0 can be processed
-            });
-            // When user stops speaking and the final result is ready
-            if (val.finalResult) {
-              setState(() => _isListening = false);
-              _submitVoiceQuery(_farmerQueryText);
-            }
-          },
-          localeId: sttLocaleId,
-        );
-      }
-    }
-  }
-
-  void _stopListening() async {
-    await _speechToText.stop();
-    setState(() => _isListening = false);
-  }
-
-  void _submitVoiceQuery(String query) async {
-    if (query.trim().isEmpty) return;
-    print("Voice Query Collected: $query");
-    
-    // Show loading spinner
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.white)),
-    );
-
-    try {
-      final reply = await ApiService.sendVoiceQuery(
-        farmerId: _farmerId,
-        cropId: _cropId,
-        queryText: query,
-        lang: _lang,
-      );
-
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop(); // Dismiss loading
-      }
-
-      // Read out loud natively
-      await _speak(reply);
-
-      // Show the response briefly in a SnackBar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(reply),
-          duration: const Duration(seconds: 8),
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: _t('close') != 'close' ? _t('close') : 'STOP',
-            onPressed: () => flutterTts.stop(),
-          ),
-        ),
-      );
-    } catch (e) {
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
-  }
 
   Future<void> _initTts() async {
     await flutterTts.setVolume(1.0);
@@ -544,20 +440,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
               foregroundColor: Colors.white,
             ),
             // Right: Floating AI Mic
-            GestureDetector(
-              onLongPressStart: (_) => _startListening(),
-              onLongPressEnd: (_) => _stopListening(),
-              child: FloatingActionButton(
-                heroTag: 'aiMicBtn',
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(_t('hold_to_speak') != 'hold_to_speak' ? _t('hold_to_speak') : 'Hold to speak to AgriChain AI')),
-                  );
-                },
-                backgroundColor: _isListening ? Colors.redAccent : const Color(0xFF2E7D32),
-                foregroundColor: Colors.white,
-                child: Icon(_isListening ? Icons.mic : Icons.mic_none),
-              ),
+            FloatingActionButton(
+              heroTag: 'aiMicBtn',
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => Padding(
+                    padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 40),
+                    child: ChatDialog(
+                      lang: _lang,
+                      farmerId: _farmerId,
+                      cropId: _cropId,
+                      flutterTts: flutterTts,
+                    ),
+                  ),
+                );
+              },
+              backgroundColor: const Color(0xFF2E7D32),
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.mic),
             ),
           ],
         ),
