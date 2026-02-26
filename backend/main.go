@@ -821,6 +821,28 @@ func computeMarketScores(farmer Farmer, crop Crop, markets []MandiPrice, weather
 			netProfit *= 1.05
 		}
 
+		// ── PHASE 7: Ground Truth Confidence Aggregation ──
+		var avgReportedPrice float64
+		var reportCount int
+
+		err := db.QueryRow(`
+			SELECT COALESCE(AVG(reported_price), 0), COUNT(report_id)
+			FROM crowdsource_reports
+			WHERE market_name = $1 AND crop_name = $2
+			  AND timestamp >= NOW() - INTERVAL '24 hours'
+		`, m.MarketName, crop.Name).Scan(&avgReportedPrice, &reportCount)
+
+		// If we have statistical significance via WhatsApp pings (n >= 3)
+		if err == nil && reportCount >= 3 && avgReportedPrice > 0 {
+			varianceRatio := avgReportedPrice / m.CurrentPrice
+			log.Printf("🤖 Ground Truth Active: %s / %s (n=%d) -> Official API: %.2f | Crowd: %.2f | Variance: %.2fx",
+				m.MarketName, crop.Name, reportCount, m.CurrentPrice, avgReportedPrice, varianceRatio)
+
+			// Override Official scores using the Crowd Truth variance
+			score *= varianceRatio
+			netProfit *= varianceRatio
+		}
+
 		options = append(options, MarketOption{
 			MarketName:         m.MarketName,
 			CurrentPrice:       m.CurrentPrice,
