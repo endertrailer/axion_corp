@@ -56,8 +56,8 @@ func main() {
 	// Core recommendation endpoint
 	r.GET("/api/v1/recommendation", handleRecommendation)
 
-	log.Printf("🚀 AgriChain API listening on :%s\n", port)
-	if err := r.Run(":" + port); err != nil {
+	log.Printf("🚀 AgriChain API listening on 0.0.0.0:%s\n", port)
+	if err := r.Run("0.0.0.0:" + port); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
 }

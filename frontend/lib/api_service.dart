@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'api_config.dart';
 
 /// Data model matching the Go backend's Recommendation JSON payload.
 class Recommendation {
@@ -94,9 +95,7 @@ class MarketOption {
 
 /// Service to communicate with the AgriChain Go backend.
 class ApiService {
-  // Change this to your backend URL.
-  // For Android emulator use 10.0.2.2; for a real device use the machine's LAN IP.
-  static const String _baseUrl = 'http://10.0.2.2:8080';
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   /// Fetches a recommendation for the given farmer and crop.
   /// If [lat] and [lon] are provided, the backend uses them for
