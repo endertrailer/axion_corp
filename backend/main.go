@@ -153,6 +153,9 @@ func handleRecommendation(c *gin.Context) {
 		)
 	}
 
+	// ── Step 6: Localized Strings ──
+	whyHi, whyMr := generateLocalizedStrings(action, crop.Name, bestMarket.MarketName, confidenceMin, confidenceMax, weather, storageOpt)
+
 	recommendation := Recommendation{
 		FarmerID:          farmerID,
 		CropName:          crop.Name,
@@ -162,6 +165,8 @@ func handleRecommendation(c *gin.Context) {
 		ConfidenceBandMin: confidenceMin,
 		ConfidenceBandMax: confidenceMax,
 		Why:               why,
+		WhyHi:             whyHi,
+		WhyMr:             whyMr,
 		Weather:           weather,
 		Markets:           marketOptions,
 		Storage:           storageOpt,
@@ -500,4 +505,102 @@ func decideActionV2(crop Crop, weather WeatherInfo, best MarketOption, trend str
 	}
 
 	return action, why
+}
+
+// ══════════════════════════════════════════════
+//  LOCALIZED EXPLAINABILITY STRINGS
+// ══════════════════════════════════════════════
+
+func generateLocalizedStrings(action, cropName, marketName string, cbMin, cbMax float64, weather WeatherInfo, storage *StorageOption) (string, string) {
+	var hi, mr string
+
+	if action == "Delay & Store Locally" && storage != nil {
+		hi = fmt.Sprintf(
+			"कीमतें ₹%.0f से ₹%.0f के बीच हो सकती हैं। %s में भारी आवक के कारण, हम %s में ₹%.1f/kg पर भंडारण की सलाह देते हैं। "+
+				"तापमान %.1f°C है, मौसम %s है। आवक सामान्य होने पर %s में बेचें।",
+			cbMin, cbMax, marketName, storage.Name, storage.PricePerKg,
+			weather.CurrentTemp, translateWeatherHi(weather.Condition), marketName,
+		)
+		mr = fmt.Sprintf(
+			"किमती ₹%.0f ते ₹%.0f दरम्यान असू शकतात। %s मध्ये मोठ्या प्रमाणात आवक झाल्यामुळे, %s मध्ये ₹%.1f/kg दराने साठवणूक करा। "+
+				"तापमान %.1f°C आहे, हवामान %s आहे। आवक सामान्य झाल्यावर %s मध्ये विक्री करा.",
+			cbMin, cbMax, marketName, storage.Name, storage.PricePerKg,
+			weather.CurrentTemp, translateWeatherMr(weather.Condition), marketName,
+		)
+	} else if action == "Wait" {
+		hi = fmt.Sprintf(
+			"अभी %s की कटाई न करें। तापमान %.1f°C है और मौसम %s है। बेहतर परिस्थितियों की प्रतीक्षा करें। "+
+				"कीमतें ₹%.0f से ₹%.0f के बीच हो सकती हैं। %s सबसे अच्छा बाजार है।",
+			cropName, weather.CurrentTemp, translateWeatherHi(weather.Condition),
+			cbMin, cbMax, marketName,
+		)
+		mr = fmt.Sprintf(
+			"सध्या %s कापणी करू नका। तापमान %.1f°C आहे आणि हवामान %s आहे। चांगल्या परिस्थितीची वाट पहा। "+
+				"किमती ₹%.0f ते ₹%.0f दरम्यान असू शकतात। %s सर्वोत्तम बाजार आहे.",
+			cropName, weather.CurrentTemp, translateWeatherMr(weather.Condition),
+			cbMin, cbMax, marketName,
+		)
+	} else {
+		// Sell at Mandi / Harvest Now
+		hi = fmt.Sprintf(
+			"कीमतें स्थिर हैं। %s की कटाई करें और %s में बेचें। "+
+				"अपेक्षित कीमत ₹%.0f से ₹%.0f प्रति क्विंटल है। तापमान %.1f°C है, मौसम %s है।",
+			cropName, marketName, cbMin, cbMax,
+			weather.CurrentTemp, translateWeatherHi(weather.Condition),
+		)
+		mr = fmt.Sprintf(
+			"किमती स्थिर आहेत. %s पीक काढा आणि %s मध्ये विका. "+
+				"अपेक्षित किंमत ₹%.0f ते ₹%.0f प्रति क्विंटल आहे. तापमान %.1f°C आहे, हवामान %s आहे.",
+			cropName, marketName, cbMin, cbMax,
+			weather.CurrentTemp, translateWeatherMr(weather.Condition),
+		)
+	}
+
+	return hi, mr
+}
+
+func translateWeatherHi(condition string) string {
+	switch condition {
+	case "Clear Sky":
+		return "साफ आसमान"
+	case "Partly Cloudy":
+		return "आंशिक बादल"
+	case "Foggy":
+		return "कोहरा"
+	case "Drizzle":
+		return "बूंदाबांदी"
+	case "Rain":
+		return "बारिश"
+	case "Rain Showers":
+		return "बारिश की बौछारें"
+	case "Snow":
+		return "बर्फबारी"
+	case "Thunderstorm":
+		return "आंधी-तूफान"
+	default:
+		return condition
+	}
+}
+
+func translateWeatherMr(condition string) string {
+	switch condition {
+	case "Clear Sky":
+		return "स्वच्छ आकाश"
+	case "Partly Cloudy":
+		return "अंशतः ढगाळ"
+	case "Foggy":
+		return "धुके"
+	case "Drizzle":
+		return "रिमझिम"
+	case "Rain":
+		return "पाऊस"
+	case "Rain Showers":
+		return "पावसाच्या सरी"
+	case "Snow":
+		return "बर्फवृष्टी"
+	case "Thunderstorm":
+		return "वादळ"
+	default:
+		return condition
+	}
 }

@@ -91,8 +91,10 @@ type Recommendation struct {
 	ConfidenceBandMin float64        `json:"confidence_band_min"`
 	ConfidenceBandMax float64        `json:"confidence_band_max"`
 	Why               string         `json:"why"`
+	WhyHi             string         `json:"explainability_string_hi"`
+	WhyMr             string         `json:"explainability_string_mr"`
 	Weather           WeatherInfo    `json:"weather"`
 	Markets           []MarketOption `json:"markets"`
-	Storage           *StorageOption `json:"storage,omitempty"` // only present when staggering is triggered
+	Storage           *StorageOption `json:"storage,omitempty"`
 	GeneratedAt       time.Time      `json:"generated_at"`
 }
