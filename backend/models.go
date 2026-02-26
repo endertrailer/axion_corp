@@ -53,10 +53,13 @@ type StorageFacility struct {
 type MarketOption struct {
 	MarketName         string  `json:"market_name"`
 	CurrentPrice       float64 `json:"current_price"`
+	DistanceKm         float64 `json:"distance_km"`
 	TransitTimeHr      float64 `json:"transit_time_hr"`
 	SpoilageLoss       float64 `json:"spoilage_loss_pct"`
+	NetProfitEstimate  float64 `json:"net_profit_estimate"`
 	MarketScore        float64 `json:"market_score"`
 	ArrivalVolumeTrend string  `json:"arrival_volume_trend"`
+	IsAIRecommended    bool    `json:"is_ai_recommended"`
 }
 
 // WeatherInfo holds the weather data relevant to the recommendation.

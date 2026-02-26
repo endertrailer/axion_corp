@@ -114,6 +114,9 @@ func handleRecommendation(c *gin.Context) {
 		return marketOptions[i].MarketScore > marketOptions[j].MarketScore
 	})
 
+	// Flag best market as AI recommended
+	marketOptions[0].IsAIRecommended = true
+
 	bestMarket := marketOptions[0]
 
 	// ── Step 4: Confidence Bands (±10%) ──
@@ -313,6 +316,7 @@ func fetchMarketPrices(cropID string) []MandiPrice {
 		{ID: "m1", MarketName: "Azadpur Mandi", CropID: cropID, CurrentPrice: 2500, MarketLat: 28.7041, MarketLon: 77.1525, ArrivalVolumeTrend: "HIGH", Timestamp: now},
 		{ID: "m2", MarketName: "Vashi APMC", CropID: cropID, CurrentPrice: 2800, MarketLat: 19.0728, MarketLon: 73.0169, ArrivalVolumeTrend: "NORMAL", Timestamp: now},
 		{ID: "m3", MarketName: "Ghazipur Mandi", CropID: cropID, CurrentPrice: 2350, MarketLat: 28.6233, MarketLon: 77.3230, ArrivalVolumeTrend: "LOW", Timestamp: now},
+		{ID: "m4", MarketName: "Pune APMC", CropID: cropID, CurrentPrice: 2650, MarketLat: 18.5204, MarketLon: 73.8567, ArrivalVolumeTrend: "NORMAL", Timestamp: now},
 	}
 }
 
@@ -427,18 +431,28 @@ func computeMarketScores(farmer Farmer, crop Crop, markets []MandiPrice, weather
 		effectivePrice := m.CurrentPrice * (1 - spoilagePct/100.0)
 		score := effectivePrice - transportPenalty
 
+		// Distance via haversine
+		distKm := haversine(farmer.LocationLat, farmer.LocationLon, m.MarketLat, m.MarketLon)
+
+		// Net profit estimate: effective price minus transport cost
+		netProfit := effectivePrice - transportPenalty
+
 		// Penalize HIGH arrival volume markets (glut discount)
 		if m.ArrivalVolumeTrend == "HIGH" {
 			score *= 0.85 // 15% penalty for oversupply risk
+			netProfit *= 0.85
 		} else if m.ArrivalVolumeTrend == "LOW" {
 			score *= 1.05 // 5% bonus for undersupply opportunity
+			netProfit *= 1.05
 		}
 
 		options = append(options, MarketOption{
 			MarketName:         m.MarketName,
 			CurrentPrice:       m.CurrentPrice,
+			DistanceKm:         math.Round(distKm*100) / 100,
 			TransitTimeHr:      math.Round(transitHr*100) / 100,
 			SpoilageLoss:       math.Round(spoilagePct*100) / 100,
+			NetProfitEstimate:  math.Round(netProfit*100) / 100,
 			MarketScore:        math.Round(score*100) / 100,
 			ArrivalVolumeTrend: m.ArrivalVolumeTrend,
 		})
