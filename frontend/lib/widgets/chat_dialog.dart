@@ -72,6 +72,10 @@ class _ChatDialogState extends State<ChatDialog> {
         
         _speechToText.listen(
           onResult: (val) {
+            setState(() {
+              _textController.text = val.recognizedWords;
+              _isTyping = val.recognizedWords.isNotEmpty;
+            });
             if (val.finalResult) {
               setState(() => _isListening = false);
               _sendMessage(val.recognizedWords, isVoice: true);

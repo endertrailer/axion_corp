@@ -43,3 +43,11 @@
 2. Restart the Go backend process using the updated binary to eliminate the missing Endpoint `404` error for `/api/v1/chat`.
 3. Change the Home Screen's `FloatingActionButton` icon from `Icons.mic` to `Icons.smart_toy` or `Icons.chat` to accurately reflect its new Chat interface behavior.
 4. Modify the TTS logic so the Assistant's voice is *only* synthesized out loud if the preceding user query was inputted via Voice (Mic), remaining silent if inputted via Keyboard.
+
+### Phase 5: Voice UX Enhancements
+**Status**: ✅ Complete
+**Objective**: Enhance the voice interaction loop by providing real-time transcription feedback and enforcing strict voice-response mirroring.
+
+**Must-Haves**:
+1. When the user taps the microphone and speaks, the STT engine must stream the recognized transcription directly into the ChatDialog's text input box in real-time, allowing them to verify or edit their query before it sends.
+2. The AI assistant must strictly reply out loud (TTS) *only* when the user submits their query via voice. Text inputs strictly result in text outputs.

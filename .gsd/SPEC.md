@@ -13,6 +13,7 @@ Transform AgriChain into a fully App-Wide Native Language Engine, ensuring that 
 5. **[Phase 2]** Restructure UI: Float an LLM Assistant FAB (Floating Action Button) in the bottom right, and move the "Change Location" button to the bottom left.
 6. **[Phase 3]** Build an Interactive Chatbot Dialog Interface: When the Assistant FAB is tapped, launch a dialog box containing a chat history, text input field, and voice chat integration.
 7. **[Phase 4]** Chat UX Polish: Ensure fully localized UI texts inside the Chatbot, correct the home FAB icon to represent "Chat", and restrict TTS audio playback to *only* trigger when responding to voice inputs.
+8. **[Phase 5]** Voice UX Enhancements: When using STT, stream the recognized speech directly into the text input box for visibility, and enforce strict audio response mirroring.
 
 ## Non-Goals (Out of Scope)
 - Adding languages outside of the 22 Indian Scheduled Languages + English.
@@ -38,3 +39,5 @@ Farmers and agricultural logistics personnel who are primarily comfortable in th
 - [x] **[Phase 4]** The Chat Dialog's UI text strings accurately translate to the active language.
 - [x] **[Phase 4]** The Dashboard Assistant Button displays an appropriate chatbot/assistant icon, not strictly a microphone.
 - [x] **[Phase 4]** The LLM plays TTS audio *only* if the user initiated the prompt via STT, remaining silent for text submissions.
+- [x] **[Phase 5]** Speech-to-Text outputs are typed live into the ChatDialog's text input box.
+- [x] **[Phase 5]** Voice Inputs trigger Voice Outputs. Text Inputs trigger Text Outputs.
