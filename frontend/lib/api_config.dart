@@ -8,7 +8,7 @@ class ApiConfig {
   static const bool useUsb = false;
 
   // Your laptop's LAN IP (run `ip addr` or `ifconfig` to find it)
-  static const String lanIp = '10.74.231.180';
+  static const String lanIp = '10.0.2.2';
 
   // Localhost via `adb reverse tcp:8080 tcp:8080`
   static const String usbIp = '127.0.0.1';

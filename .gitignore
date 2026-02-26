@@ -20,3 +20,4 @@ frontend/android/app/build/
 .DS_Store
 *.swp
 backend/agrichain-server
+backend/.env
