@@ -49,15 +49,24 @@ Every external API call (Open-Meteo, OSRM, Database) has a **hardcoded fallback*
 - Database unavailable → demo farmer/crop/market data
 - **The API endpoint never fails to return valid JSON**
 
-### 📍 GPS Location Detection
-- Auto-detects farmer's GPS position via `geolocator`
-- Passes live coordinates to the backend for location-accurate weather + transit
-- Graceful fallback to stored/default location if GPS is unavailable
+### 🤖 Multilingual AI Chatbot & Voice UX
+- Deep integration with **Google Gemini 2.5 Flash** SLM.
+- **Audio-First Design**: Built-in Speech-to-Text (STT) and Text-to-Speech (TTS) for low-literacy users.
+- Connects live farm data (crop, weather, soil) to the LLM context window to provide personalized, hyper-local agronomy advice in under 3 sentences.
+- **Dynamic Localization**: Full support for 7 Indian languages (English, Hindi, Marathi, Bengali, Tamil, Telugu, Gujarati) with live SLM translation for all UI components.
 
-### 💚 "Trust" UI
-- **"Why are we suggesting this?"** — expandable section breaking down the reasoning
-- Numbered explanations covering temperature, market score, humidity, and supply conditions
-- Designed for low-literacy, low-bandwidth environments
+### 🌱 Soil Health & Predictive Modeling
+- Deterministic soil modeling (`Moisture`, `N`, `P`, `K`) based on precise geographic coordinates.
+- **Predictive Pricing Strategy**: 7-day future price forecasting using regression analysis on historical mandi datasets.
+- **Dynamic Preservation Techniques**: An internal ranking engine providing tailored crop preservation steps (e.g. "Use Ventilated Crates", "Cover with Tarpaulin") based on live transit duration and temperature shocks.
+
+### 📍 GPS Location & Crop Matrix
+- Auto-detects farmer's GPS position via `geolocator` and routes coordinates to OSRM models.
+- **Extensive Database**: Natively maps and tracks predictive agronomy statistics for **31 diverse Indian Crops** spanning vegetables, fruits, grains, and cash crops via a fully localized `CropPickerScreen`.
+
+### 💚 "Trust" UI & Explainability
+- **"Why are we suggesting this?"** — Expandable section breaking down the mathematical reasoning into plain language.
+- Real-time LLM parsing translates the backend grading logic into regional dialects instantly.
 
 ---
 
@@ -213,12 +222,11 @@ Health check endpoint.
 
 ## 🔮 Roadmap
 
-- [ ] SMS-based interface for feature phones (USSD/WhatsApp)
-- [ ] Historical price trend charts
-- [ ] Multi-language support (Hindi, Marathi, Telugu)
-- [ ] Cooperative group buying for cold storage
-- [ ] ML-based price prediction models
-- [ ] Integration with eNAM (National Agriculture Market)
+## 🔮 Roadmap
+
+- [ ] SMS-based / USSD interface for 2G feature phones.
+- [ ] Cooperative group buying for cold storage rentals.
+- [ ] Direct integration with eNAM (National Agriculture Market) blockchain protocols.
 
 ---
 
