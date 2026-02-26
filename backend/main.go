@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -89,6 +91,9 @@ func handleRecommendation(c *gin.Context) {
 	}
 	log.Printf("📍 Using location: lat=%.4f, lon=%.4f", farmer.LocationLat, farmer.LocationLon)
 
+	roadQuality := c.DefaultQuery("road_quality", "mixed")
+	cropMaturity := c.DefaultQuery("crop_maturity", "Optimal")
+
 	// ── Step 2: PostgreSQL / PostGIS Cached Fetches ──
 	var wg sync.WaitGroup
 	var weather WeatherInfo
@@ -111,7 +116,7 @@ func handleRecommendation(c *gin.Context) {
 	wg.Wait()
 
 	// ── Step 3: Compute transit times + market scores ──
-	marketOptions := computeMarketScores(farmer, crop, markets, weather)
+	marketOptions := computeMarketScores(farmer, crop, markets, weather, roadQuality, cropMaturity)
 
 	sort.Slice(marketOptions, func(i, j int) bool {
 		return marketOptions[i].MarketScore > marketOptions[j].MarketScore
@@ -164,6 +169,8 @@ func handleRecommendation(c *gin.Context) {
 		TemperatureCelsius: weather.CurrentTemp,
 		HumidityPercent:    weather.Humidity,
 		TransitTimeHours:   bestMarket.TransitTimeHr,
+		RoadQuality:        roadQuality,
+		CropMaturity:       cropMaturity,
 	}
 	riskLevel := CalculateSpoilageRisk(factors)
 
@@ -180,8 +187,8 @@ func handleRecommendation(c *gin.Context) {
 	explanationStr := GenerateExplanation(bestMarket.MarketName, bestMarket.NetProfitEstimate, riskLevel, rainProb)
 	why = explanationStr + "\n\n" + why
 
-	// ── Step 6: Localized Strings ──
-	whyHi, whyMr := generateLocalizedStrings(action, crop.Name, bestMarket.MarketName, confidenceMin, confidenceMax, weather, storageOpt)
+	// ── Step 6: Localized Strings via SLM ──
+	whyHi, whyMr := generateLocalizedStrings(why, action, crop.Name, bestMarket.MarketName)
 
 	// ── Step 7: Preservation Actions ──
 	preservationOptions := getDynamicPreservationActions(crop.Name, riskLevel, weather, bestMarket.TransitTimeHr)
@@ -668,10 +675,20 @@ func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 // ══════════════════════════════════════════════
 
 func CalculateSpoilageRisk(factors SpoilageFactors) string {
-	if factors.TemperatureCelsius > 35 && factors.TransitTimeHours > 10 {
+	effectiveTransit := factors.TransitTimeHours
+	if factors.RoadQuality == "unpaved" {
+		effectiveTransit *= 1.8
+	}
+
+	effectiveTemp := factors.TemperatureCelsius
+	if factors.CropMaturity == "Late" {
+		effectiveTemp += 5.0
+	}
+
+	if effectiveTemp > 35 && effectiveTransit > 10 {
 		return "HIGH"
 	}
-	if factors.TemperatureCelsius > 30 || factors.TransitTimeHours > 5 {
+	if effectiveTemp > 30 || effectiveTransit > 5 {
 		return "MEDIUM"
 	}
 	return "LOW"
@@ -682,7 +699,7 @@ func GenerateExplanation(marketName string, netProfitPerKg float64, riskLevel st
 		marketName, netProfitPerKg, riskLevel, rainProb)
 }
 
-func computeMarketScores(farmer Farmer, crop Crop, markets []MandiPrice, weather WeatherInfo) []MarketOption {
+func computeMarketScores(farmer Farmer, crop Crop, markets []MandiPrice, weather WeatherInfo, roadQuality string, cropMaturity string) []MarketOption {
 	options := make([]MarketOption, 0, len(markets))
 
 	type transitResult struct {
@@ -705,9 +722,17 @@ func computeMarketScores(farmer Farmer, crop Crop, markets []MandiPrice, weather
 
 	for i, m := range markets {
 		transitHr := transitTimes[i]
+		if roadQuality == "unpaved" {
+			transitHr *= 1.8 // Vibration bruising penalty
+		}
+
 		tempFactor := 1.0 + math.Abs(weather.TempDelta)/10.0
+		if cropMaturity == "Late" {
+			tempFactor *= 2.0 // Late harvest decays twice as fast from ambient heat
+		}
+
 		spoilagePct := crop.BaselineSpoilageRate * transitHr * tempFactor
-		transportPenalty := transitHr * 50.0
+		transportPenalty := transitTimes[i] * 50.0 // Standard hr cost
 		effectivePrice := m.CurrentPrice * (1 - spoilagePct/100.0)
 		score := effectivePrice - transportPenalty
 
@@ -902,99 +927,93 @@ func getDynamicPreservationActions(cropName string, riskLevel string, weather We
 }
 
 // ══════════════════════════════════════════════
-//  LOCALIZED EXPLAINABILITY STRINGS
+//  LOCALIZED EXPLAINABILITY STRINGS (SLM)
 // ══════════════════════════════════════════════
 
-func generateLocalizedStrings(action, cropName, marketName string, cbMin, cbMax float64, weather WeatherInfo, storage *StorageOption) (string, string) {
-	var hi, mr string
-
-	if action == "Delay & Store Locally" && storage != nil {
-		hi = fmt.Sprintf(
-			"कीमतें ₹%.0f से ₹%.0f के बीच हो सकती हैं। %s में भारी आवक के कारण, हम %s में ₹%.1f/kg पर भंडारण की सलाह देते हैं। "+
-				"तापमान %.1f°C है, मौसम %s है। आवक सामान्य होने पर %s में बेचें।",
-			cbMin, cbMax, marketName, storage.Name, storage.PricePerKg,
-			weather.CurrentTemp, translateWeatherHi(weather.Condition), marketName,
-		)
-		mr = fmt.Sprintf(
-			"किमती ₹%.0f ते ₹%.0f दरम्यान असू शकतात। %s मध्ये मोठ्या प्रमाणात आवक झाल्यामुळे, %s मध्ये ₹%.1f/kg दराने साठवणूक करा। "+
-				"तापमान %.1f°C आहे, हवामान %s आहे। आवक सामान्य झाल्यावर %s मध्ये विक्री करा.",
-			cbMin, cbMax, marketName, storage.Name, storage.PricePerKg,
-			weather.CurrentTemp, translateWeatherMr(weather.Condition), marketName,
-		)
-	} else if action == "Wait" {
-		hi = fmt.Sprintf(
-			"अभी %s की कटाई न करें। तापमान %.1f°C है और मौसम %s है। बेहतर परिस्थितियों की प्रतीक्षा करें। "+
-				"कीमतें ₹%.0f से ₹%.0f के बीच हो सकती हैं। %s सबसे अच्छा बाजार है।",
-			cropName, weather.CurrentTemp, translateWeatherHi(weather.Condition),
-			cbMin, cbMax, marketName,
-		)
-		mr = fmt.Sprintf(
-			"सध्या %s कापणी करू नका। तापमान %.1f°C आहे आणि हवामान %s आहे। चांगल्या परिस्थितीची वाट पहा। "+
-				"किमती ₹%.0f ते ₹%.0f दरम्यान असू शकतात। %s सर्वोत्तम बाजार आहे.",
-			cropName, weather.CurrentTemp, translateWeatherMr(weather.Condition),
-			cbMin, cbMax, marketName,
-		)
-	} else {
-		// Sell at Mandi / Harvest Now
-		hi = fmt.Sprintf(
-			"कीमतें स्थिर हैं। %s की कटाई करें और %s में बेचें। "+
-				"अपेक्षित कीमत ₹%.0f से ₹%.0f प्रति क्विंटल है। तापमान %.1f°C है, मौसम %s है।",
-			cropName, marketName, cbMin, cbMax,
-			weather.CurrentTemp, translateWeatherHi(weather.Condition),
-		)
-		mr = fmt.Sprintf(
-			"किमती स्थिर आहेत. %s पीक काढा आणि %s मध्ये विका. "+
-				"अपेक्षित किंमत ₹%.0f ते ₹%.0f प्रति क्विंटल आहे. तापमान %.1f°C आहे, हवामान %s आहे.",
-			cropName, marketName, cbMin, cbMax,
-			weather.CurrentTemp, translateWeatherMr(weather.Condition),
-		)
+func generateLocalizedStrings(whyEn, action, cropName, marketName string) (string, string) {
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" || apiKey == "your_api_key_here" {
+		log.Println("WARNING: GEMINI_API_KEY not found. Using fallback translations.")
+		return fallbackTranslations(action, cropName, marketName)
 	}
 
+	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey
+
+	prompt := fmt.Sprintf("You are an empathetic agricultural advisor for Indian farmers.\n"+
+		"Translate the following English recommendation into simple, conversational Hindi and Marathi suitable for a farmer.\n\n"+
+		"Action: %s\nCrop: %s\nMarket: %s\n"+
+		"English Recommendation:\n%s\n\n"+
+		"Return ONLY a valid JSON object with keys \"why_hi\" and \"why_mr\" containing the respective translations. "+
+		"Do not include markdown formatting like ```json or anything else.", action, cropName, marketName, whyEn)
+
+	reqBody := map[string]interface{}{
+		"contents": []map[string]interface{}{
+			{
+				"parts": []map[string]string{
+					{"text": prompt},
+				},
+			},
+		},
+		"generationConfig": map[string]interface{}{
+			"temperature": 0.3,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return fallbackTranslations(action, cropName, marketName)
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil || resp.StatusCode != http.StatusOK {
+		log.Printf("SLM API failed: err %v", err)
+		return fallbackTranslations(action, cropName, marketName)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
+		if len(result.Candidates) > 0 && len(result.Candidates[0].Content.Parts) > 0 {
+			responseText := result.Candidates[0].Content.Parts[0].Text
+			responseText = strings.TrimPrefix(responseText, "```json")
+			responseText = strings.TrimPrefix(responseText, "```")
+			responseText = strings.TrimSuffix(responseText, "```")
+			responseText = strings.TrimSpace(responseText)
+
+			var parsedData struct {
+				WhyHi string `json:"why_hi"`
+				WhyMr string `json:"why_mr"`
+			}
+			if err := json.Unmarshal([]byte(responseText), &parsedData); err == nil {
+				if parsedData.WhyHi != "" && parsedData.WhyMr != "" {
+					return parsedData.WhyHi, parsedData.WhyMr
+				}
+			} else {
+				log.Printf("SLM JSON parse failed: %v\nRaw text: %s", err, responseText)
+			}
+		}
+	}
+
+	return fallbackTranslations(action, cropName, marketName)
+}
+
+func fallbackTranslations(action, cropName, marketName string) (string, string) {
+	if action == "Wait" {
+		hi := fmt.Sprintf("अभी %s की कटाई न करें। बेहतर परिस्थितियों की प्रतीक्षा करें। %s सबसे अच्छा बाजार है।", cropName, marketName)
+		mr := fmt.Sprintf("सध्या %s कापणी करू नका। चांगल्या परिस्थितीची वाट पहा। %s सर्वोत्तम बाजार आहे.", cropName, marketName)
+		return hi, mr
+	}
+	hi := fmt.Sprintf("कीमतें स्थिर हैं। %s की कटाई करें और %s में बेचें।", cropName, marketName)
+	mr := fmt.Sprintf("किमती स्थिर आहेत. %s पीक काढा आणि %s मध्ये विका.", cropName, marketName)
 	return hi, mr
-}
-
-func translateWeatherHi(condition string) string {
-	switch condition {
-	case "Clear Sky":
-		return "साफ आसमान"
-	case "Partly Cloudy":
-		return "आंशिक बादल"
-	case "Foggy":
-		return "कोहरा"
-	case "Drizzle":
-		return "बूंदाबांदी"
-	case "Rain":
-		return "बारिश"
-	case "Rain Showers":
-		return "बारिश की बौछारें"
-	case "Snow":
-		return "बर्फबारी"
-	case "Thunderstorm":
-		return "आंधी-तूफान"
-	default:
-		return condition
-	}
-}
-
-func translateWeatherMr(condition string) string {
-	switch condition {
-	case "Clear Sky":
-		return "स्वच्छ आकाश"
-	case "Partly Cloudy":
-		return "अंशतः ढगाळ"
-	case "Foggy":
-		return "धुके"
-	case "Drizzle":
-		return "रिमझिम"
-	case "Rain":
-		return "पाऊस"
-	case "Rain Showers":
-		return "पावसाच्या सरी"
-	case "Snow":
-		return "बर्फवृष्टी"
-	case "Thunderstorm":
-		return "वादळ"
-	default:
-		return condition
-	}
 }
