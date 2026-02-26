@@ -2,16 +2,19 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';
 
-/// Data model matching the Go backend's Recommendation JSON payload.
+/// Data model matching the Go backend's Recommendation JSON payload (Phase 2).
 class Recommendation {
   final String farmerId;
   final String cropName;
   final String action;
   final String recommendedMarket;
   final double marketScore;
+  final double confidenceBandMin;
+  final double confidenceBandMax;
   final String why;
   final WeatherInfo weather;
   final List<MarketOption> markets;
+  final StorageOption? storage;
   final DateTime generatedAt;
 
   Recommendation({
@@ -20,9 +23,12 @@ class Recommendation {
     required this.action,
     required this.recommendedMarket,
     required this.marketScore,
+    required this.confidenceBandMin,
+    required this.confidenceBandMax,
     required this.why,
     required this.weather,
     required this.markets,
+    this.storage,
     required this.generatedAt,
   });
 
@@ -33,15 +39,22 @@ class Recommendation {
       action: json['action'] ?? '',
       recommendedMarket: json['recommended_market'] ?? '',
       marketScore: (json['market_score'] ?? 0).toDouble(),
+      confidenceBandMin: (json['confidence_band_min'] ?? 0).toDouble(),
+      confidenceBandMax: (json['confidence_band_max'] ?? 0).toDouble(),
       why: json['why'] ?? '',
       weather: WeatherInfo.fromJson(json['weather'] ?? {}),
       markets: (json['markets'] as List<dynamic>?)
               ?.map((m) => MarketOption.fromJson(m))
               .toList() ??
           [],
+      storage: json['storage'] != null
+          ? StorageOption.fromJson(json['storage'])
+          : null,
       generatedAt: DateTime.tryParse(json['generated_at'] ?? '') ?? DateTime.now(),
     );
   }
+
+  bool get isStoreAction => action.toLowerCase().contains('store');
 }
 
 class WeatherInfo {
@@ -73,6 +86,7 @@ class MarketOption {
   final double transitTimeHr;
   final double spoilageLoss;
   final double marketScore;
+  final String arrivalVolumeTrend;
 
   MarketOption({
     required this.marketName,
@@ -80,6 +94,7 @@ class MarketOption {
     required this.transitTimeHr,
     required this.spoilageLoss,
     required this.marketScore,
+    required this.arrivalVolumeTrend,
   });
 
   factory MarketOption.fromJson(Map<String, dynamic> json) {
@@ -89,6 +104,30 @@ class MarketOption {
       transitTimeHr: (json['transit_time_hr'] ?? 0).toDouble(),
       spoilageLoss: (json['spoilage_loss_pct'] ?? 0).toDouble(),
       marketScore: (json['market_score'] ?? 0).toDouble(),
+      arrivalVolumeTrend: json['arrival_volume_trend'] ?? 'NORMAL',
+    );
+  }
+}
+
+class StorageOption {
+  final String name;
+  final double distanceKm;
+  final double pricePerKg;
+  final double capacityMT;
+
+  StorageOption({
+    required this.name,
+    required this.distanceKm,
+    required this.pricePerKg,
+    required this.capacityMT,
+  });
+
+  factory StorageOption.fromJson(Map<String, dynamic> json) {
+    return StorageOption(
+      name: json['name'] ?? '',
+      distanceKm: (json['distance_km'] ?? 0).toDouble(),
+      pricePerKg: (json['price_per_kg'] ?? 0).toDouble(),
+      capacityMT: (json['capacity_mt'] ?? 0).toDouble(),
     );
   }
 }
@@ -98,8 +137,6 @@ class ApiService {
   static String get _baseUrl => ApiConfig.baseUrl;
 
   /// Fetches a recommendation for the given farmer and crop.
-  /// If [lat] and [lon] are provided, the backend uses them for
-  /// weather and transit calculations instead of stored location.
   static Future<Recommendation> getRecommendation({
     required String farmerId,
     required String cropId,
@@ -121,26 +158,24 @@ class ApiService {
       }
       throw Exception('Server returned ${response.statusCode}');
     } catch (e) {
-      // Return a realistic demo recommendation if the backend is unreachable
       return _fallbackRecommendation(farmerId);
     }
   }
 
-
-  /// Offline / demo fallback so the UI always works.
+  /// Offline / demo fallback — simulates a HIGH-glut staggering scenario.
   static Recommendation _fallbackRecommendation(String farmerId) {
     return Recommendation(
       farmerId: farmerId,
       cropName: 'Tomato',
-      action: 'Harvest Now',
+      action: 'Delay & Store Locally',
       recommendedMarket: 'Azadpur Mandi',
-      marketScore: 2342.50,
-      why: '1. Current temperature (32.4°C) is close to the ideal 25.0°C for Tomato, '
-          'making conditions favorable for harvest. '
-          '2. Azadpur Mandi offers the best effective price at ₹2500/quintal after '
-          'accounting for 0.8 hrs transit and 1.5% estimated spoilage (Market Score: 2343). '
-          '3. High humidity (78%) detected — consider immediate transport to reduce '
-          'moisture-related decay.',
+      marketScore: 2097.13,
+      confidenceBandMin: 2250,
+      confidenceBandMax: 2750,
+      why: '1. Price is likely between ₹2250 and ₹2750. However, due to a massive arrival surge at Azadpur Mandi, we recommend storing at Narela Cold Storage for ₹2.0/kg to prevent distress sales. '
+          '2. Current temperature (32.4°C) with Partly Cloudy conditions. '
+          '3. Once arrivals normalise, sell at Azadpur Mandi for the best effective return (Market Score: 2097). '
+          '4. Storage at Narela Cold Storage has 500 MT capacity available at ₹2.0/kg/day, located 28.5 km from your farm.',
       weather: WeatherInfo(
         currentTemp: 32.4,
         humidity: 78.0,
@@ -153,14 +188,16 @@ class ApiService {
           currentPrice: 2500,
           transitTimeHr: 0.8,
           spoilageLoss: 1.5,
-          marketScore: 2342.50,
+          marketScore: 2097.13,
+          arrivalVolumeTrend: 'HIGH',
         ),
         MarketOption(
           marketName: 'Ghazipur Mandi',
           currentPrice: 2350,
           transitTimeHr: 0.5,
           spoilageLoss: 1.1,
-          marketScore: 2294.35,
+          marketScore: 2435.65,
+          arrivalVolumeTrend: 'LOW',
         ),
         MarketOption(
           marketName: 'Vashi APMC',
@@ -168,8 +205,15 @@ class ApiService {
           transitTimeHr: 18.2,
           spoilageLoss: 12.3,
           marketScore: 1545.60,
+          arrivalVolumeTrend: 'NORMAL',
         ),
       ],
+      storage: StorageOption(
+        name: 'Narela Cold Storage',
+        distanceKm: 28.5,
+        pricePerKg: 2.0,
+        capacityMT: 500,
+      ),
       generatedAt: DateTime.now(),
     );
   }
