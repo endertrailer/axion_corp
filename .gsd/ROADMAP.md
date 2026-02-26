@@ -68,3 +68,12 @@
 1. Create a `CropPickerScreen` returning the selected UUID. Features a search bar and visually appealing grid or list layout.
 2. Provide a master-list of ~20-30 diverse Indian crops spanning vegetables, fruits, and cash crops, completely mapped in the backend fallback logic.
 3. Ensure every single crop name dynamically translates to the 22 Indian Languages through `frontend/lib/l10n/translations.dart`.
+
+### Phase 8: API Validation & Localization Polish
+**Status**: ✅ Complete
+**Objective**: Guarantee that all primary components (Location changing, API calling) function reliably, and expand localization into the Chatbot UI and Ranked Preservation actions.
+
+**Must-Haves**:
+1. Implement translation logic inside the Go Backend to map `PreservationAction` structs (ActionName, CostEstimate, Effectiveness) to the selected localized language rather than defaulting to English.
+2. Add a new `ActionChip` inside the Flutter ChatDialog allowing users to quickly trigger queries about "Ranked Preservation Actions".
+3. Verify the Flutter "Change Location" logic to ensure that setting a custom coordinate pin accurately rebuilds the dataset.

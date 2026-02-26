@@ -252,6 +252,11 @@ class _ChatDialogState extends State<ChatDialog> {
                 ),
                 const SizedBox(width: 8),
                 ActionChip(
+                  label: Text(AppTranslations.t('ranked_preservation_actions', widget.lang)),
+                  onPressed: () => _sendMessage(AppTranslations.t('ranked_preservation_actions', widget.lang)),
+                ),
+                const SizedBox(width: 8),
+                ActionChip(
                   label: Text(AppTranslations.t('market_prices_action', widget.lang)),
                   onPressed: () => _sendMessage(AppTranslations.t('market_prices_action', widget.lang)),
                 ),

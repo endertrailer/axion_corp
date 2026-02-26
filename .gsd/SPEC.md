@@ -16,6 +16,7 @@ Transform AgriChain into a fully App-Wide Native Language Engine, ensuring that 
 8. **[Phase 5]** Voice UX Enhancements: When using STT, stream the recognized speech directly into the text input box for visibility, and enforce strict audio response mirroring.
 9. **[Phase 6]** Dynamic Crop Selection: Add a Crop switch UI in the frontend and map three crop types (Tomato, Onion, Potato) in the backend to break the hardcoded "Tomato" restriction.
 10. **[Phase 7]** Comprehensive Crop Database & Picker UI: Expand the backend to recognize a massive compendium of unique Indian crops, and introduce a dedicated, searchable frontend page for selecting the farmer's yield.
+11. **[Phase 8]** API Validation & Localization Polish: Test system stability (Location Picker, API requests) and translate the remaining English preservation actions logic. Add the corresponding Chip to the Chat Dialog.
 
 ## Non-Goals (Out of Scope)
 - Adding languages outside of the 22 Indian Scheduled Languages + English.
@@ -48,3 +49,6 @@ Farmers and agricultural logistics personnel who are primarily comfortable in th
 - [x] **[Phase 7]** The backend safely distinguishes at least 20 diverse Indian Crops.
 - [x] **[Phase 7]** A visually appealing `CropPickerScreen` is implemented in Flutter, featuring a search bar and language-localized crop names.
 - [x] **[Phase 7]** The Dashboard header routes to the `CropPickerScreen` instead of a local standard Dropdown.
+- [x] **[Phase 8]** `backend/main.go` translates dynamic preservation lists when requested.
+- [x] **[Phase 8]** Chat Dialog features an "ActionChip" for Preservation queries.
+- [x] **[Phase 8]** Location Picker logic verified.

@@ -264,7 +264,8 @@ func handleRecommendation(c *gin.Context) {
 	whyLocalized := generateLocalizedStrings(why, action, crop.Name, bestMarket.MarketName, lang)
 
 	// ── Step 7: Preservation Actions ──
-	preservationOptions := getDynamicPreservationActions(crop.Name, riskLevel, weather, bestMarket.TransitTimeHr)
+	preservationOptionsEn := getDynamicPreservationActions(crop.Name, riskLevel, weather, bestMarket.TransitTimeHr)
+	preservationOptions := translatePreservationActions(preservationOptionsEn, lang)
 
 	recommendation := Recommendation{
 		FarmerID:          farmerID,
@@ -1147,6 +1148,78 @@ func generateLocalizedStrings(whyEn, action, cropName, marketName, langCode stri
 	}
 
 	return whyEn
+}
+func translatePreservationActions(actions []PreservationAction, langCode string) []PreservationAction {
+	if langCode == "en" || len(actions) == 0 {
+		return actions
+	}
+
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" || apiKey == "your_api_key_here" {
+		return actions
+	}
+
+	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey
+
+	actionsJSON, _ := json.Marshal(actions)
+
+	prompt := fmt.Sprintf("You are an expert translator for Indian agriculture. "+
+		"Translate the values of 'action_name', 'cost_estimate', and 'effectiveness' in this JSON array to the language represented by ISO code '%s'. "+
+		"Keep the JSON structure strictly identical. Return ONLY valid JSON, no markdown formatting.\n\n%s", langCode, string(actionsJSON))
+
+	reqBody := map[string]interface{}{
+		"contents": []map[string]interface{}{
+			{
+				"parts": []map[string]string{
+					{"text": prompt},
+				},
+			},
+		},
+		"generationConfig": map[string]interface{}{
+			"temperature":      0.1,
+			"responseMimeType": "application/json",
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return actions
+	}
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return actions
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
+		if len(result.Candidates) > 0 && len(result.Candidates[0].Content.Parts) > 0 {
+			responseText := strings.TrimSpace(result.Candidates[0].Content.Parts[0].Text)
+			// Remove possible markdown backticks if Gemini ignored instructions
+			responseText = strings.TrimPrefix(responseText, "```json")
+			responseText = strings.TrimPrefix(responseText, "```")
+			responseText = strings.TrimSuffix(responseText, "```")
+			responseText = strings.TrimSpace(responseText)
+
+			var translatedActions []PreservationAction
+			if err := json.Unmarshal([]byte(responseText), &translatedActions); err == nil {
+				return translatedActions
+			}
+		}
+	}
+
+	return actions
 }
 
 func fallbackTranslations(action, cropName, marketName string) (string, string) {

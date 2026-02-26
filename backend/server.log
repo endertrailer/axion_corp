@@ -1,7 +1,7 @@
 nohup: ignoring input
-2026/02/27 03:56:45 Applied schema.sql successfully.
-2026/02/27 03:56:45 PostgreSQL connected successfully.
-2026/02/27 03:56:45 Starting background async ingestion workers...
+2026/02/27 04:11:33 Applied schema.sql successfully.
+2026/02/27 04:11:33 PostgreSQL connected successfully.
+2026/02/27 04:11:33 Starting background async ingestion workers...
 [GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
 
 [GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
@@ -12,62 +12,101 @@ nohup: ignoring input
 [GIN-debug] GET    /api/v1/recommendation    --> main.handleRecommendation (3 handlers)
 [GIN-debug] POST   /api/v1/chat              --> main.handleChat (3 handlers)
 [GIN-debug] POST   /api/v1/webhook/whatsapp  --> main.handleWhatsAppWebhook (3 handlers)
-2026/02/27 03:56:45 🚀 AgriChain API listening on 0.0.0.0:8080
+2026/02/27 04:11:33 🚀 AgriChain API listening on 0.0.0.0:8080
 [GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
 Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
 [GIN-debug] Listening and serving HTTP on 0.0.0.0:8080
-2026/02/27 03:56:45 [worker] Fetching data.gov.in live prices...
-2026/02/27 03:56:45 [worker] Fetching Open-Meteo weather updates...
-2026/02/27 03:56:50 ⚠ Open-Meteo API failed – using fallback weather data
-2026/02/27 03:56:55 [worker] Failed to fetch live prices for Tomato: data.gov.in request failed: Get "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000011380f4db44c14e7676f2d1587ed61b2c&format=json&filters[commodity]=Tomato&sort[arrival_date]=desc&limit=10": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
-2026/02/27 03:57:01 [worker] Failed to fetch live prices for Wheat: data.gov.in returned status 502
-2026/02/27 03:57:06 [worker] Failed to fetch live prices for Rice: data.gov.in returned status 502
-2026/02/27 03:57:06 [worker] Completed mandi price ingestion cycle.
-2026/02/27 03:57:29 📍 Using location: lat=21.1676, lon=79.0689
-2026/02/27 03:57:29 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
-2026/02/27 03:57:29 ⚠ DB fetch mandi prices failed: <nil>
-2026/02/27 03:57:32 ⚠ DB fetch crop failed: sql: no rows in result set – using fallback
-2026/02/27 03:57:32 📍 Using location: lat=21.1676, lon=79.0689
-2026/02/27 03:57:32 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
-2026/02/27 03:57:32 ⚠ DB fetch mandi prices failed: <nil>
-[GIN] 2026/02/27 - 03:57:35 | 200 |  6.954095274s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lang=en&lat=21.167572&lon=79.068928"
-[GIN] 2026/02/27 - 03:57:37 | 200 |  4.744650223s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=d4e5f6a7-b890-12cd-ef12-345678901234&lang=en&lat=21.167572&lon=79.068928"
-2026/02/27 03:57:49 📍 Using location: lat=21.1676, lon=79.0689
-2026/02/27 03:57:49 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
-2026/02/27 03:57:49 ⚠ DB fetch mandi prices failed: <nil>
-2026/02/27 03:57:50 ⚠ DB fetch crop failed: sql: no rows in result set – using fallback
-2026/02/27 03:57:50 📍 Using location: lat=21.1676, lon=79.0689
-2026/02/27 03:57:50 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
-2026/02/27 03:57:50 ⚠ DB fetch mandi prices failed: <nil>
-[GIN] 2026/02/27 - 03:57:54 | 200 |  4.560688379s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lang=en&lat=21.167572&lon=79.068928"
-[GIN] 2026/02/27 - 03:57:54 | 200 |  3.679688857s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=d4e5f6a7-b890-12cd-ef12-345678901234&lang=en&lat=21.167572&lon=79.068928"
-2026/02/27 03:59:07 ⚠ DB fetch crop failed: sql: no rows in result set – using fallback
-2026/02/27 03:59:07 📍 Using location: lat=21.1676, lon=79.0689
-2026/02/27 03:59:07 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
-2026/02/27 03:59:07 ⚠ DB fetch mandi prices failed: <nil>
-[GIN] 2026/02/27 - 03:59:14 | 200 |  7.709591723s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=e5f6a7b8-9012-cdef-1234-567890123456&lang=en&lat=21.167572&lon=79.068928"
-2026/02/27 03:59:22 📍 Using location: lat=21.1676, lon=79.0689
-2026/02/27 03:59:22 ⚠ DB fetch mandi prices failed: <nil>
-2026/02/27 03:59:22 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
-[GIN] 2026/02/27 - 03:59:25 | 200 |  3.177859474s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lang=en&lat=21.167572&lon=79.068928"
-2026/02/27 03:59:54 ⚠ DB fetch crop failed: sql: no rows in result set – using fallback
-2026/02/27 03:59:54 📍 Using location: lat=21.1676, lon=79.0689
-2026/02/27 03:59:54 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
-2026/02/27 03:59:54 ⚠ DB fetch mandi prices failed: <nil>
-2026/02/27 03:59:55 📍 Using location: lat=21.1676, lon=79.0689
-2026/02/27 03:59:55 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
-2026/02/27 03:59:55 ⚠ DB fetch mandi prices failed: <nil>
-2026/02/27 03:59:56 ⚠ DB fetch crop failed: sql: no rows in result set – using fallback
-2026/02/27 03:59:56 📍 Using location: lat=21.1676, lon=79.0689
-2026/02/27 03:59:56 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
-2026/02/27 03:59:56 ⚠ DB fetch mandi prices failed: <nil>
-[GIN] 2026/02/27 - 04:00:00 | 200 |  6.272148078s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=d4e5f6a7-b890-12cd-ef12-345678901234&lang=en&lat=21.167572&lon=79.068928"
-[GIN] 2026/02/27 - 04:00:03 | 200 |  7.094154716s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=d4e5f6a7-b890-12cd-ef12-345678901234&lang=en&lat=21.167572&lon=79.068928"
-2026/02/27 04:00:03 ⚠ OSRM API failed – using haversine fallback
-2026/02/27 04:00:03 ⚠ OSRM API failed – using haversine fallback
-[GIN] 2026/02/27 - 04:00:03 | 200 |   8.22794633s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lang=en&lat=21.167572&lon=79.068928"
-2026/02/27 04:00:06 ⚠ DB fetch crop failed: sql: no rows in result set – using fallback
-2026/02/27 04:00:06 📍 Using location: lat=21.1676, lon=79.0689
-2026/02/27 04:00:06 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
-2026/02/27 04:00:06 ⚠ DB fetch mandi prices failed: <nil>
-[GIN] 2026/02/27 - 04:00:12 | 200 |  5.678943852s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=d8e9f0a1-2345-9012-4567-890123456789&lang=en&lat=21.167572&lon=79.068928"
+2026/02/27 04:11:33 [worker] Fetching data.gov.in live prices...
+2026/02/27 04:11:33 [worker] Fetching Open-Meteo weather updates...
+2026/02/27 04:11:43 [worker] Failed to fetch live prices for Tomato: data.gov.in request failed: Get "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000011380f4db44c14e7676f2d1587ed61b2c&format=json&filters[commodity]=Tomato&sort[arrival_date]=desc&limit=10": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/02/27 04:11:43 [worker] Failed to fetch live prices for Wheat: data.gov.in request failed: Get "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000011380f4db44c14e7676f2d1587ed61b2c&format=json&filters[commodity]=Wheat&sort[arrival_date]=desc&limit=10": dial tcp: lookup api.data.gov.in on 127.0.0.53:53: server misbehaving
+2026/02/27 04:11:43 [worker] Failed to fetch live prices for Rice: data.gov.in request failed: Get "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000011380f4db44c14e7676f2d1587ed61b2c&format=json&filters[commodity]=Rice&sort[arrival_date]=desc&limit=10": dial tcp: lookup api.data.gov.in on 127.0.0.53:53: server misbehaving
+2026/02/27 04:11:43 [worker] Completed mandi price ingestion cycle.
+2026/02/27 04:11:46 ⚠ DB fetch crop failed: sql: no rows in result set – using fallback
+2026/02/27 04:11:46 📍 Using location: lat=21.1676, lon=79.0689
+2026/02/27 04:11:46 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
+2026/02/27 04:11:46 ⚠ DB fetch mandi prices failed: <nil>
+2026/02/27 04:11:51 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:11:51 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:11:51 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:11:51 ⚠ OSRM API failed – using haversine fallback
+[GIN] 2026/02/27 - 04:11:51 | 200 |   5.01921589s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=d4e5f6a7-8901-5678-0123-456789012345&lang=en&lat=21.167572&lon=79.068928"
+2026/02/27 04:12:07 📍 Using location: lat=21.1676, lon=79.0689
+2026/02/27 04:12:07 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
+2026/02/27 04:12:07 ⚠ DB fetch mandi prices failed: <nil>
+2026/02/27 04:12:13 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:12:13 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:12:13 ⚠ OSRM API failed – using haversine fallback
+[GIN] 2026/02/27 - 04:12:13 | 200 |  5.953098595s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lang=en&lat=21.167572&lon=79.068928"
+2026/02/27 04:13:34 ⚠ DB fetch farmer failed: sql: no rows in result set – using fallback
+2026/02/27 04:13:34 📍 Using location: lat=28.7041, lon=77.1525
+2026/02/27 04:13:34 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
+2026/02/27 04:13:34 ⚠ DB fetch mandi prices failed: <nil>
+2026/02/27 04:13:40 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:13:40 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:13:40 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:13:40 ⚠ OSRM API failed – using haversine fallback
+[GIN] 2026/02/27 - 04:13:51 | 200 | 17.448759117s |             ::1 | GET      "/api/v1/recommendation?farmer_id=f9b2d8e1-5c4a-4b72-9a3d-1f6e8c0b2a9d&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lat=28.7041&lon=77.1525&lang=hi"
+2026/02/27 04:14:16 ⚠ DB fetch farmer failed: sql: no rows in result set – using fallback
+2026/02/27 04:14:16 📍 Using location: lat=28.7041, lon=77.1525
+2026/02/27 04:14:16 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
+2026/02/27 04:14:16 ⚠ DB fetch mandi prices failed: <nil>
+2026/02/27 04:14:23 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:14:23 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:14:23 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:14:23 ⚠ OSRM API failed – using haversine fallback
+2026/02/27 04:14:23 SLM API failed: err <nil>, status: 429, body: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 36.67840316s.",
+    "status": "RESOURCE_EXHAUSTED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.Help",
+        "links": [
+          {
+            "description": "Learn more about Gemini API quotas",
+            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"
+          }
+        ]
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+        "violations": [
+          {
+            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",
+            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+            "quotaDimensions": {
+              "location": "global",
+              "model": "gemini-2.5-flash"
+            },
+            "quotaValue": "20"
+          }
+        ]
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.RetryInfo",
+        "retryDelay": "36s"
+      }
+    ]
+  }
+}
+[GIN] 2026/02/27 - 04:14:23 | 200 |  7.704695263s |             ::1 | GET      "/api/v1/recommendation?farmer_id=f9b2d8e1-5c4a-4b72-9a3d-1f6e8c0b2a9d&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lat=28.7041&lon=77.1525&lang=hi"
+2026/02/27 04:14:56 Chat SLM API failed: err <nil>
+[GIN] 2026/02/27 - 04:14:56 | 200 |  1.412252141s |       127.0.0.1 | POST     "/api/v1/chat"
+2026/02/27 04:14:59 Chat SLM API failed: err <nil>
+[GIN] 2026/02/27 - 04:14:59 | 200 |  505.235373ms |       127.0.0.1 | POST     "/api/v1/chat"
+2026/02/27 04:15:01 Chat SLM API failed: err <nil>
+[GIN] 2026/02/27 - 04:15:01 | 200 |  713.294103ms |       127.0.0.1 | POST     "/api/v1/chat"
+2026/02/27 04:15:03 Chat SLM API failed: err <nil>
+[GIN] 2026/02/27 - 04:15:03 | 200 |  812.306217ms |       127.0.0.1 | POST     "/api/v1/chat"
+2026/02/27 04:15:08 Chat SLM API failed: err <nil>
+[GIN] 2026/02/27 - 04:15:08 | 200 |  753.886619ms |       127.0.0.1 | POST     "/api/v1/chat"
+2026/02/27 04:15:13 ⚠ DB fetch farmer failed: sql: no rows in result set – using fallback
+2026/02/27 04:15:13 📍 Using location: lat=19.0760, lon=72.8777
+2026/02/27 04:15:13 ⚠ DB fetch weather failed: pq: column "location" does not exist at position 4:13 (42703)
+2026/02/27 04:15:13 ⚠ DB fetch mandi prices failed: <nil>
+2026/02/27 04:15:20 ⚠ OSRM API failed – using haversine fallback
+[GIN] 2026/02/27 - 04:15:20 | 200 |  6.052960674s |             ::1 | GET      "/api/v1/recommendation?farmer_id=f9b2d8e1-5c4a-4b72-9a3d-1f6e8c0b2a9d&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lat=19.0760&lon=72.8777&lang=en"
+2026/02/27 04:15:36 Chat SLM API failed: err <nil>
+[GIN] 2026/02/27 - 04:15:36 | 200 |  493.046979ms |       127.0.0.1 | POST     "/api/v1/chat"
