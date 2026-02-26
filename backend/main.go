@@ -414,7 +414,7 @@ func fetchLiveMandiPrices(apiKey string, cropName string) ([]LiveMandiRecord, er
 		apiKey, cropName,
 	)
 
-	client := &http.Client{Timeout: 3 * time.Second}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("data.gov.in request failed: %w", err)
@@ -433,11 +433,11 @@ func fetchLiveMandiPrices(apiKey string, cropName string) ([]LiveMandiRecord, er
 	// The API returns: { "records": [ { "market": "...", "modal_price": "...", ... } ] }
 	var apiResp struct {
 		Records []struct {
-			Market     string `json:"market"`
-			Commodity  string `json:"commodity"`
-			ModalPrice string `json:"modal_price"`
-			State      string `json:"state"`
-			District   string `json:"district"`
+			Market     string  `json:"market"`
+			Commodity  string  `json:"commodity"`
+			ModalPrice float64 `json:"modal_price"`
+			State      string  `json:"state"`
+			District   string  `json:"district"`
 		} `json:"records"`
 	}
 
@@ -447,12 +447,11 @@ func fetchLiveMandiPrices(apiKey string, cropName string) ([]LiveMandiRecord, er
 
 	var records []LiveMandiRecord
 	for _, r := range apiResp.Records {
-		modalPrice, _ := strconv.ParseFloat(r.ModalPrice, 64)
 		// modal_price is per Quintal (100kg), divide by 100 for price_per_kg
 		records = append(records, LiveMandiRecord{
 			Market:     r.Market,
 			Commodity:  r.Commodity,
-			ModalPrice: modalPrice, // keep as per quintal to match our CurrentPrice field
+			ModalPrice: r.ModalPrice, // keep as per quintal to match our CurrentPrice field
 			State:      r.State,
 			District:   r.District,
 		})
