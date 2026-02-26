@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 import 'l10n/translations.dart';
@@ -247,10 +250,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (pos != null) {
         setState(() {
           _position = pos;
-          _locationStatus =
-              'Location: ${pos!.latitude.toStringAsFixed(4)}°N, ${pos.longitude.toStringAsFixed(4)}°E';
           _locationDenied = false;
         });
+        await _updateLocationStatus(pos);
       } else {
         setState(() => _locationStatus = 'Getting GPS fix…');
         pos = await Geolocator.getCurrentPosition(
@@ -261,10 +263,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
         setState(() {
           _position = pos;
-          _locationStatus =
-              'Location: ${pos!.latitude.toStringAsFixed(4)}°N, ${pos.longitude.toStringAsFixed(4)}°E';
           _locationDenied = false;
         });
+        await _updateLocationStatus(pos!);
       }
     } catch (e) {
       debugPrint('Location error: $e');
@@ -275,6 +276,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     _fetchRecommendation();
+  }
+
+  Future<void> _updateLocationStatus(Position pos) async {
+    try {
+      final placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+      if (placemarks.isNotEmpty) {
+        final p = placemarks.first;
+        final placeName = [p.locality, p.administrativeArea].where((e) => e != null && e.isNotEmpty).join(', ');
+        if (placeName.isNotEmpty) {
+          setState(() {
+            _locationStatus = '$placeName (${pos.latitude.toStringAsFixed(2)}°, ${pos.longitude.toStringAsFixed(2)}°)';
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Geocoding error: $e');
+    }
+    // Fallback if geocoding fails
+    setState(() {
+      _locationStatus = 'Location: ${pos.latitude.toStringAsFixed(4)}°N, ${pos.longitude.toStringAsFixed(4)}°E';
+    });
   }
 
   Future<void> _fetchRecommendation() async {
@@ -359,7 +382,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       body: _buildBody(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showLocationPicker,
+        icon: const Icon(Icons.edit_location_alt),
+        label: Text(_t('change_location') != 'change_location' ? _t('change_location') : 'Change Location'),
+        backgroundColor: const Color(0xFF2E7D32),
+        foregroundColor: Colors.white,
+      ),
     );
+  }
+
+  void _showLocationPicker() async {
+    final LatLng? selected = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MapLocationPickerScreen(
+          initialPosition: _position != null 
+              ? LatLng(_position!.latitude, _position!.longitude)
+              : const LatLng(21.1458, 79.0882), // Default Center of India roughly
+        ),
+      ),
+    );
+
+    if (selected != null) {
+      setState(() {
+        _position = Position(
+          latitude: selected.latitude,
+          longitude: selected.longitude,
+          timestamp: DateTime.now(),
+          accuracy: 1, altitude: 1, heading: 1, speed: 1, speedAccuracy: 1,
+          altitudeAccuracy: 1, headingAccuracy: 1,
+        );
+        _locationDenied = false;
+        _locationStatus = 'Detecting region...';
+      });
+      await _updateLocationStatus(_position!);
+      _fetchRecommendation();
+    }
   }
 
   Widget _buildBody() {
@@ -431,6 +490,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildRankedPreservationActions(rec.preservationActions),
             const SizedBox(height: 12),
           ],
+          _buildSoilHealthCard(rec.soilHealth),
+          const SizedBox(height: 12),
           _buildWeatherCard(rec.weather),
           const SizedBox(height: 12),
           _buildMarketsCard(rec.markets),
@@ -533,6 +594,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: const TextStyle(fontSize: 15, color: Colors.white70),
                   textAlign: TextAlign.center,
                 ),
+                if (rec.harvestWindow.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(50),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${_t('harvest_window')}: ${rec.harvestWindow}',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -768,6 +843,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
   }
 
+  // ─── SOIL HEALTH CARD ─────────────────────────────
+
+  Widget _buildSoilHealthCard(SoilHealth soil) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.grass, color: Color(0xFF689F38)),
+              const SizedBox(width: 8),
+              Text(_t('soil_health'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ]),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _weatherStat('${soil.moisturePct.toStringAsFixed(1)}%', _t('moisture'), Icons.water_drop),
+                _weatherStat(soil.nitrogen.toStringAsFixed(0), 'N', Icons.science),
+                _weatherStat(soil.phosphorus.toStringAsFixed(0), 'P', Icons.science),
+                _weatherStat(soil.potassium.toStringAsFixed(0), 'K', Icons.science),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: soil.moisturePct < 20 ? Colors.orange.withAlpha(30) : Colors.green.withAlpha(30),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                soil.status,
+                style: TextStyle(
+                  color: soil.moisturePct < 20 ? Colors.orange[800] : Colors.green[800],
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ─── MARKETS COMPARISON CARD ──────────────────
 
   Widget _buildMarketsCard(List<MarketOption> markets) {
@@ -905,6 +1031,117 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  MAP LOCATION PICKER SCREEN
+// ═══════════════════════════════════════════════
+
+class MapLocationPickerScreen extends StatefulWidget {
+  final LatLng initialPosition;
+
+  const MapLocationPickerScreen({super.key, required this.initialPosition});
+
+  @override
+  State<MapLocationPickerScreen> createState() => _MapLocationPickerScreenState();
+}
+
+class _MapLocationPickerScreenState extends State<MapLocationPickerScreen> {
+  final MapController _mapController = MapController();
+  late LatLng _selectedPosition;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedPosition = widget.initialPosition;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Select Location', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF2E7D32),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Stack(
+        children: [
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _selectedPosition,
+              initialZoom: 6.0,
+              onTap: (tapPosition, point) {
+                setState(() {
+                  _selectedPosition = point;
+                });
+              },
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.agrichain',
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: _selectedPosition,
+                    width: 40,
+                    height: 40,
+                    child: const Icon(
+                      Icons.location_on,
+                      color: Colors.red,
+                      size: 40,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Positioned(
+            bottom: 24,
+            left: 24,
+            right: 24,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context, _selectedPosition);
+              },
+              icon: const Icon(Icons.check, color: Colors.white),
+              label: const Text(
+                'Confirm Location',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E7D32),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 16,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(240),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+              ),
+              child: const Text(
+                'Tap anywhere on the map to select a farm location',
+                style: TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+        ],
       ),
     );
   }

@@ -7,6 +7,7 @@ class Recommendation {
   final String farmerId;
   final String cropName;
   final String action;
+  final String harvestWindow;
   final String recommendedMarket;
   final double marketScore;
   final double confidenceBandMin;
@@ -15,6 +16,7 @@ class Recommendation {
   final String whyHi;
   final String whyMr;
   final WeatherInfo weather;
+  final SoilHealth soilHealth;
   final List<MarketOption> markets;
   final StorageOption? storage;
   final List<PreservationAction> preservationActions;
@@ -24,6 +26,7 @@ class Recommendation {
     required this.farmerId,
     required this.cropName,
     required this.action,
+    required this.harvestWindow,
     required this.recommendedMarket,
     required this.marketScore,
     required this.confidenceBandMin,
@@ -32,6 +35,7 @@ class Recommendation {
     this.whyHi = '',
     this.whyMr = '',
     required this.weather,
+    required this.soilHealth,
     required this.markets,
     this.storage,
     this.preservationActions = const [],
@@ -43,6 +47,7 @@ class Recommendation {
       farmerId: json['farmer_id'] ?? '',
       cropName: json['crop_name'] ?? '',
       action: json['action'] ?? '',
+      harvestWindow: json['harvest_window'] ?? '',
       recommendedMarket: json['recommended_market'] ?? '',
       marketScore: (json['market_score'] ?? 0).toDouble(),
       confidenceBandMin: (json['confidence_band_min'] ?? 0).toDouble(),
@@ -51,6 +56,7 @@ class Recommendation {
       whyHi: json['explainability_string_hi'] ?? '',
       whyMr: json['explainability_string_mr'] ?? '',
       weather: WeatherInfo.fromJson(json['weather'] ?? {}),
+      soilHealth: SoilHealth.fromJson(json['soil_health'] ?? {}),
       markets: (json['markets'] as List<dynamic>?)
               ?.map((m) => MarketOption.fromJson(m))
               .toList() ??
@@ -100,6 +106,32 @@ class WeatherInfo {
       humidity: (json['humidity_pct'] ?? 0).toDouble(),
       tempDelta: (json['temp_delta_from_ideal'] ?? 0).toDouble(),
       condition: json['condition'] ?? 'Unknown',
+    );
+  }
+}
+
+class SoilHealth {
+  final double moisturePct;
+  final double nitrogen;
+  final double phosphorus;
+  final double potassium;
+  final String status;
+
+  SoilHealth({
+    required this.moisturePct,
+    required this.nitrogen,
+    required this.phosphorus,
+    required this.potassium,
+    required this.status,
+  });
+
+  factory SoilHealth.fromJson(Map<String, dynamic> json) {
+    return SoilHealth(
+      moisturePct: (json['moisture_pct'] ?? 0).toDouble(),
+      nitrogen: (json['nitrogen'] ?? 0).toDouble(),
+      phosphorus: (json['phosphorus'] ?? 0).toDouble(),
+      potassium: (json['potassium'] ?? 0).toDouble(),
+      status: json['status'] ?? 'Unknown',
     );
   }
 }
@@ -224,6 +256,7 @@ class ApiService {
       farmerId: farmerId,
       cropName: 'Tomato',
       action: 'Delay & Store Locally',
+      harvestWindow: 'Delay Harvest (4-7 Days)',
       recommendedMarket: 'Azadpur Mandi',
       marketScore: 2097.13,
       confidenceBandMin: 2250,
@@ -237,6 +270,13 @@ class ApiService {
         humidity: 78.0,
         tempDelta: 7.4,
         condition: 'Partly Cloudy',
+      ),
+      soilHealth: SoilHealth(
+        moisturePct: 18.5,
+        nitrogen: 45.0,
+        phosphorus: 20.0,
+        potassium: 30.0,
+        status: 'Low Moisture - Irrigate Soon',
       ),
       markets: [
         MarketOption(
