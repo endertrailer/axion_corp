@@ -8,6 +8,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'api_service.dart';
 import 'l10n/translations.dart';
 import 'widgets/chat_dialog.dart';
+import 'widgets/crop_picker_screen.dart';
 
 void main() {
   runApp(const AgriChainApp());
@@ -388,40 +389,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          // Crop Dropdown
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10.0),
+          // Crop Selector Button
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () async {
+              final selectedId = await Navigator.push<String>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CropPickerScreen(lang: _lang),
+                ),
+              );
+              if (selectedId != null && selectedId != _cropId) {
+                setState(() {
+                  _cropId = selectedId;
+                  _loading = true; // Show loading indicator immediately
+                });
+                _initLocationThenFetch();
+              }
+            },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              margin: const EdgeInsets.only(right: 8, top: 10, bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.white.withAlpha(50),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _cropId,
-                  icon: const Icon(Icons.swap_vert, color: Colors.white, size: 20),
-                  dropdownColor: const Color(0xFF1B5E20),
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                  onChanged: (String? newValue) {
-                    if (newValue != null && newValue != _cropId) {
-                      setState(() {
-                        _cropId = newValue;
-                        _loading = true; // Show loading indicator immediately
-                      });
-                      _initLocationThenFetch();
-                    }
-                  },
-                  items: const [
-                    DropdownMenuItem(value: 'c3d4e5f6-a7b8-9012-cdef-123456789012', child: Text('🍅 Tomato')),
-                    DropdownMenuItem(value: 'd4e5f6a7-b890-12cd-ef12-345678901234', child: Text('🧅 Onion')),
-                    DropdownMenuItem(value: 'e5f6a7b8-9012-cdef-1234-567890123456', child: Text('🥔 Potato')),
-                  ],
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    (() {
+                      final crop = masterCropList.firstWhere((c) => c.id == _cropId, orElse: () => masterCropList.first);
+                      return '${crop.emoji} ${AppTranslations.t(crop.translationKey, _lang)}';
+                    })(),
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+                ],
               ),
             ),
           ),
-          const SizedBox(width: 8),
           
           // Language switch button
           InkWell(

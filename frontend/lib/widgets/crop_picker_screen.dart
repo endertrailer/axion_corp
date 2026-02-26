@@ -1,0 +1,165 @@
+import 'package:flutter/material.dart';
+import '../l10n/translations.dart';
+
+class CropItem {
+  final String id;
+  final String translationKey;
+  final String emoji;
+
+  const CropItem(this.id, this.translationKey, this.emoji);
+}
+
+const List<CropItem> masterCropList = [
+  // Vegetables
+  CropItem('c3d4e5f6-a7b8-9012-cdef-123456789012', 'crop_tomato', '🍅'),
+  CropItem('d4e5f6a7-b890-12cd-ef12-345678901234', 'crop_onion', '🧅'),
+  CropItem('e5f6a7b8-9012-cdef-1234-567890123456', 'crop_potato', '🥔'),
+  CropItem('f6a7b8c9-0123-def0-2345-678901234567', 'crop_brinjal', '🍆'),
+  CropItem('a7b8c9d0-1234-ef01-3456-789012345678', 'crop_cabbage', '🥬'),
+  CropItem('b8c9d0e1-2345-f012-4567-890123456789', 'crop_cauliflower', '🥦'),
+  CropItem('c9d0e1f2-3456-0123-5678-901234567890', 'crop_spinach', '🍃'),
+  CropItem('d0e1f2a3-4567-1234-6789-012345678901', 'crop_carrot', '🥕'),
+  CropItem('e1f2a3b4-5678-2345-7890-123456789012', 'crop_radish', '🌿'),
+  CropItem('f2a3b4c5-6789-3456-8901-234567890123', 'crop_garlic', '🧄'),
+  
+  // Fruits
+  CropItem('a3b4c5d6-7890-4567-9012-345678901234', 'crop_apple', '🍎'),
+  CropItem('b4c5d6e7-8901-5678-0123-456789012345', 'crop_banana', '🍌'),
+  CropItem('c5d6e7f8-9012-6789-1234-567890123456', 'crop_mango', '🥭'),
+  CropItem('d6e7f8a9-0123-7890-2345-678901234567', 'crop_orange', '🍊'),
+  CropItem('e7f8a9b0-1234-8901-3456-789012345678', 'crop_grapes', '🍇'),
+  CropItem('f8a9b0c1-2345-9012-4567-890123456789', 'crop_papaya', '🍈'),
+  CropItem('a9b0c1d2-3456-0123-5678-901234567890', 'crop_guava', '🍐'),
+  CropItem('b0c1d2e3-4567-1234-6789-012345678901', 'crop_pineapple', '🍍'),
+  CropItem('c1d2e3f4-5678-2345-7890-123456789012', 'crop_pomegranate', '🍎'),
+  
+  // Cash Crops & Grains
+  CropItem('d2e3f4a5-6789-3456-8901-234567890123', 'crop_wheat', '🌾'),
+  CropItem('e3f4a5b6-7890-4567-9012-345678901234', 'crop_rice', '🍚'),
+  CropItem('f4a5b6c7-8901-5678-0123-456789012345', 'crop_sugarcane', '🎋'),
+  CropItem('a5b6c7d8-9012-6789-1234-567890123456', 'crop_cotton', '☁️'),
+  CropItem('b6c7d8e9-0123-7890-2345-678901234567', 'crop_maize', '🌽'),
+  CropItem('c7d8e9f0-1234-8901-3456-789012345678', 'crop_tea', '☕'),
+  CropItem('d8e9f0a1-2345-9012-4567-890123456789', 'crop_coffee', '☕'),
+  CropItem('e9f0a1b2-3456-0123-5678-901234567890', 'crop_mustard', '🌼'),
+  
+  // Spices
+  CropItem('f0a1b2c3-4567-1234-6789-012345678901', 'crop_ginger', '🫚'),
+  CropItem('a1b2c3d4-5678-2345-7890-123456789012', 'crop_turmeric', '🟡'),
+  CropItem('b2c3d4e5-6789-3456-8901-234567890123', 'crop_coriander', '🌿'),
+  CropItem('c3d4e5f6-7890-4567-9012-345678901234', 'crop_cumin', '🫘'),
+  CropItem('d4e5f6a7-8901-5678-0123-456789012345', 'crop_black_pepper', '⚫'),
+];
+
+class CropPickerScreen extends StatefulWidget {
+  final String lang;
+  const CropPickerScreen({super.key, required this.lang});
+
+  @override
+  State<CropPickerScreen> createState() => _CropPickerScreenState();
+}
+
+class _CropPickerScreenState extends State<CropPickerScreen> {
+  String _searchQuery = "";
+
+  @override
+  Widget build(BuildContext context) {
+    // Filter the crops based on the search query translating to the target language
+    // and falling back to English matches as well just in case.
+    final filteredCrops = masterCropList.where((crop) {
+      if (_searchQuery.isEmpty) return true;
+      
+      final localizedName = AppTranslations.t(crop.translationKey, widget.lang).toLowerCase();
+      final englishName = AppTranslations.t(crop.translationKey, 'en').toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      
+      return localizedName.contains(query) || englishName.contains(query);
+    }).toList();
+
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: Text(AppTranslations.t('select_your_crop', widget.lang), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: const Color(0xFF2E7D32),
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          Container(
+            color: const Color(0xFF2E7D32),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: TextField(
+              onChanged: (value) => setState(() => _searchQuery = value),
+              decoration: InputDecoration(
+                hintText: AppTranslations.t('search_crop', widget.lang),
+                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.85,
+              ),
+              itemCount: filteredCrops.length,
+              itemBuilder: (context, index) {
+                final crop = filteredCrops[index];
+                return InkWell(
+                  onTap: () {
+                    // Return the selected crop ID securely through the Navigator
+                    Navigator.pop(context, crop.id);
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(10),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          crop.emoji,
+                          style: const TextStyle(fontSize: 36),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          AppTranslations.t(crop.translationKey, widget.lang),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -371,27 +371,56 @@ func fetchCrop(id string) Crop {
 		}
 		log.Printf("⚠ DB fetch crop failed: %v – using fallback", err)
 	}
-	if id == "d4e5f6a7-b890-12cd-ef12-345678901234" {
-		return Crop{
-			ID:                   id,
-			Name:                 "Onion",
-			IdealTemp:            20.0,
-			BaselineSpoilageRate: 1.0,
-			CreatedAt:            time.Now(),
-		}
-	} else if id == "e5f6a7b8-9012-cdef-1234-567890123456" {
-		return Crop{
-			ID:                   id,
-			Name:                 "Potato",
-			IdealTemp:            15.0,
-			BaselineSpoilageRate: 1.5,
-			CreatedAt:            time.Now(),
-		}
+	// Fallback dictionary for 30+ Indian crops
+	var cropDB = map[string]Crop{
+		// Vegetables
+		"c3d4e5f6-a7b8-9012-cdef-123456789012": {Name: "Tomato", IdealTemp: 25.0, BaselineSpoilageRate: 2.5},
+		"d4e5f6a7-b890-12cd-ef12-345678901234": {Name: "Onion", IdealTemp: 20.0, BaselineSpoilageRate: 1.0},
+		"e5f6a7b8-9012-cdef-1234-567890123456": {Name: "Potato", IdealTemp: 15.0, BaselineSpoilageRate: 1.5},
+		"f6a7b8c9-0123-def0-2345-678901234567": {Name: "Brinjal (Eggplant)", IdealTemp: 26.0, BaselineSpoilageRate: 2.2},
+		"a7b8c9d0-1234-ef01-3456-789012345678": {Name: "Cabbage", IdealTemp: 18.0, BaselineSpoilageRate: 2.8},
+		"b8c9d0e1-2345-f012-4567-890123456789": {Name: "Cauliflower", IdealTemp: 18.0, BaselineSpoilageRate: 3.0},
+		"c9d0e1f2-3456-0123-5678-901234567890": {Name: "Spinach", IdealTemp: 16.0, BaselineSpoilageRate: 4.5},
+		"d0e1f2a3-4567-1234-6789-012345678901": {Name: "Carrot", IdealTemp: 16.0, BaselineSpoilageRate: 1.8},
+		"e1f2a3b4-5678-2345-7890-123456789012": {Name: "Radish", IdealTemp: 15.0, BaselineSpoilageRate: 2.0},
+		"f2a3b4c5-6789-3456-8901-234567890123": {Name: "Garlic", IdealTemp: 18.0, BaselineSpoilageRate: 0.8},
+		// Fruits
+		"a3b4c5d6-7890-4567-9012-345678901234": {Name: "Apple", IdealTemp: 4.0, BaselineSpoilageRate: 1.2},
+		"b4c5d6e7-8901-5678-0123-456789012345": {Name: "Banana", IdealTemp: 14.0, BaselineSpoilageRate: 3.5},
+		"c5d6e7f8-9012-6789-1234-567890123456": {Name: "Mango", IdealTemp: 12.0, BaselineSpoilageRate: 2.8},
+		"d6e7f8a9-0123-7890-2345-678901234567": {Name: "Orange", IdealTemp: 8.0, BaselineSpoilageRate: 2.0},
+		"e7f8a9b0-1234-8901-3456-789012345678": {Name: "Grapes", IdealTemp: 2.0, BaselineSpoilageRate: 3.2},
+		"f8a9b0c1-2345-9012-4567-890123456789": {Name: "Papaya", IdealTemp: 12.0, BaselineSpoilageRate: 4.0},
+		"a9b0c1d2-3456-0123-5678-901234567890": {Name: "Guava", IdealTemp: 10.0, BaselineSpoilageRate: 2.5},
+		"b0c1d2e3-4567-1234-6789-012345678901": {Name: "Pineapple", IdealTemp: 10.0, BaselineSpoilageRate: 1.8},
+		"c1d2e3f4-5678-2345-7890-123456789012": {Name: "Pomegranate", IdealTemp: 5.0, BaselineSpoilageRate: 1.5},
+		// Cash Crops & Grains
+		"d2e3f4a5-6789-3456-8901-234567890123": {Name: "Wheat", IdealTemp: 20.0, BaselineSpoilageRate: 0.5},
+		"e3f4a5b6-7890-4567-9012-345678901234": {Name: "Rice", IdealTemp: 25.0, BaselineSpoilageRate: 0.8},
+		"f4a5b6c7-8901-5678-0123-456789012345": {Name: "Sugarcane", IdealTemp: 30.0, BaselineSpoilageRate: 2.0},
+		"a5b6c7d8-9012-6789-1234-567890123456": {Name: "Cotton", IdealTemp: 25.0, BaselineSpoilageRate: 0.4},
+		"b6c7d8e9-0123-7890-2345-678901234567": {Name: "Maize", IdealTemp: 24.0, BaselineSpoilageRate: 0.9},
+		"c7d8e9f0-1234-8901-3456-789012345678": {Name: "Tea", IdealTemp: 20.0, BaselineSpoilageRate: 1.0},
+		"d8e9f0a1-2345-9012-4567-890123456789": {Name: "Coffee", IdealTemp: 22.0, BaselineSpoilageRate: 1.2},
+		"e9f0a1b2-3456-0123-5678-901234567890": {Name: "Mustard", IdealTemp: 15.0, BaselineSpoilageRate: 0.6},
+		// Spices
+		"f0a1b2c3-4567-1234-6789-012345678901": {Name: "Ginger", IdealTemp: 15.0, BaselineSpoilageRate: 1.5},
+		"a1b2c3d4-5678-2345-7890-123456789012": {Name: "Turmeric", IdealTemp: 25.0, BaselineSpoilageRate: 0.5},
+		"b2c3d4e5-6789-3456-8901-234567890123": {Name: "Coriander", IdealTemp: 20.0, BaselineSpoilageRate: 3.5},
+		"c3d4e5f6-7890-4567-9012-345678901234": {Name: "Cumin", IdealTemp: 25.0, BaselineSpoilageRate: 0.5},
+		"d4e5f6a7-8901-5678-0123-456789012345": {Name: "Black Pepper", IdealTemp: 25.0, BaselineSpoilageRate: 0.8},
 	}
 
+	if cropData, exists := cropDB[id]; exists {
+		cropData.ID = id
+		cropData.CreatedAt = time.Now()
+		return cropData
+	}
+
+	// Default fallback to Tomato if unknown UUID
 	return Crop{
-		ID:                   "c3d4e5f6-a7b8-9012-cdef-123456789012",
-		Name:                 "Tomato",
+		ID:                   id,
+		Name:                 "Unknown Crop (Default: Tomato)",
 		IdealTemp:            25.0,
 		BaselineSpoilageRate: 2.5,
 		CreatedAt:            time.Now(),

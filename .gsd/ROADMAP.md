@@ -59,3 +59,12 @@
 **Must-Haves**:
 1. The backend must mathematically evaluate dynamic crop UUIDs for Tomatoes, Onions, and Potatoes.
 2. The frontend must feature a dynamic crop switcher in the AppBar, visually reloading the metrics instantly upon selection.
+
+### Phase 7: Comprehensive Crop Database & Picker UI
+**Status**: ✅ Complete
+**Objective**: Overhaul the application to support a vast array of Indian crops, vegetables, and fruits through a dedicated, searchable, language-localized selection screen rather than a simple 3-item dropdown.
+
+**Must-Haves**:
+1. Create a `CropPickerScreen` returning the selected UUID. Features a search bar and visually appealing grid or list layout.
+2. Provide a master-list of ~20-30 diverse Indian crops spanning vegetables, fruits, and cash crops, completely mapped in the backend fallback logic.
+3. Ensure every single crop name dynamically translates to the 22 Indian Languages through `frontend/lib/l10n/translations.dart`.
