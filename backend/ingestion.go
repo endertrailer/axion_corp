@@ -12,6 +12,17 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// ── Shared Structs for Ingestion ──────────────────────────
+
+type LivePrice struct {
+	Market     string  `json:"market"`
+	State      string  `json:"state"`
+	Commodity  string  `json:"commodity"`
+	MinPrice   float64 `json:"min_price"`
+	MaxPrice   float64 `json:"max_price"`
+	ModalPrice float64 `json:"modal_price"`
+}
+
 // StartIngestionCron spawns background workers to ingest external API data into the DB.
 func StartIngestionCron(db *sqlx.DB) {
 	if db == nil {
@@ -105,6 +116,8 @@ func ingestWeatherGrid(db *sqlx.DB) {
 		log.Printf("[worker] Weather ingestion failed: %v", err)
 	}
 }
+
+// ── Shared Mandi Fetcher for Cron ────────────────────
 
 // ── Shared Weather Fetcher for Cron ────────────────────
 

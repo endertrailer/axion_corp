@@ -53,10 +53,80 @@ func main() {
 
 	r.GET("/api/v1/recommendation", handleRecommendation)
 
+	// WhatsApp Webhook
+	r.POST("/api/v1/webhook/whatsapp", handleWhatsAppWebhook)
+
 	log.Printf("🚀 AgriChain API listening on 0.0.0.0:%s\n", port)
 	if err := r.Run("0.0.0.0:" + port); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
+}
+
+// ══════════════════════════════════════════════
+//  WHATSAPP WEBHOOK HANDLER (Phase 7 – Crowdsourcing)
+// ══════════════════════════════════════════════
+
+type WhatsAppPayload struct {
+	Entry []struct {
+		Changes []struct {
+			Value struct {
+				Messages []struct {
+					From string `json:"from"`
+					Text struct {
+						Body string `json:"body"`
+					} `json:"text"`
+				} `json:"messages"`
+			} `json:"value"`
+		} `json:"changes"`
+	} `json:"entry"`
+}
+
+func handleWhatsAppWebhook(c *gin.Context) {
+	// Verify token challenge if it's a GET request (required for WhatsApp Webhook registration)
+	if c.Request.Method == http.MethodGet {
+		challenge := c.Query("hub.challenge")
+		c.String(http.StatusOK, challenge)
+		return
+	}
+
+	var payload WhatsAppPayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload format"})
+		return
+	}
+
+	for _, entry := range payload.Entry {
+		for _, change := range entry.Changes {
+			for _, msg := range change.Value.Messages {
+				phone := msg.From
+				text := strings.TrimSpace(msg.Text.Body)
+
+				// Expected Format: "MarketName CropName Price" (e.g. "Azadpur Tomato 2500")
+				parts := strings.Split(text, " ")
+				if len(parts) >= 3 {
+					// We'll assume the last part is the price, and the second-to-last is the crop
+					priceStr := parts[len(parts)-1]
+					cropName := parts[len(parts)-2]
+					marketName := strings.Join(parts[:len(parts)-2], " ")
+
+					if reportedPrice, err := strconv.ParseFloat(priceStr, 64); err == nil {
+						query := `
+							INSERT INTO crowdsource_reports (farmer_phone, market_name, crop_name, reported_price)
+							VALUES ($1, $2, $3, $4)
+						`
+						_, err := db.Exec(query, phone, marketName, cropName, reportedPrice)
+						if err != nil {
+							log.Printf("Error inserting crowdsource report: %v", err)
+						} else {
+							log.Printf("✅ Crowdsource ping registered: %s reported %s at %s for ₹%.2f", phone, cropName, marketName, reportedPrice)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "received"})
 }
 
 // ══════════════════════════════════════════════

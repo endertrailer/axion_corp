@@ -76,10 +76,22 @@ CREATE TABLE IF NOT EXISTS storage_facilities (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Crowdsource Reports table: Logs farmer verification ping loops from WhatsApp
+CREATE TABLE IF NOT EXISTS crowdsource_reports (
+    report_id        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    farmer_phone     VARCHAR(20) NOT NULL,
+    market_name      VARCHAR(200) NOT NULL,
+    crop_name        VARCHAR(100) NOT NULL,
+    reported_price   DOUBLE PRECISION NOT NULL,  -- INR per quintal
+    timestamp        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Indexes for frequent lookups.
 CREATE INDEX IF NOT EXISTS idx_mandi_prices_crop_id ON mandi_prices(crop_id);
 CREATE INDEX IF NOT EXISTS idx_mandi_prices_timestamp ON mandi_prices(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_storage_facilities_location ON storage_facilities(location_lat, location_lon);
+CREATE INDEX IF NOT EXISTS idx_crowdsource_reports_market_crop ON crowdsource_reports(market_name, crop_name);
+CREATE INDEX IF NOT EXISTS idx_crowdsource_reports_timestamp ON crowdsource_reports(timestamp DESC);
 
 -- ═══════════════════════════════════════════════
 -- Seed data for development / demo.
