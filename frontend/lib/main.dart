@@ -102,23 +102,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    // 3. Get current position
+    // 3. Get position — try last known first (instant), then live fix
     try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
-      setState(() {
-        _position = pos;
-        _locationStatus =
-            'Location: ${pos.latitude.toStringAsFixed(4)}°N, ${pos.longitude.toStringAsFixed(4)}°E';
-        _locationDenied = false;
-      });
+      Position? pos;
+
+      // Try cached / last-known position first (returns instantly)
+      pos = await Geolocator.getLastKnownPosition();
+
+      if (pos != null) {
+        setState(() {
+          _position = pos;
+          _locationStatus =
+              'Location: ${pos!.latitude.toStringAsFixed(4)}°N, ${pos.longitude.toStringAsFixed(4)}°E';
+          _locationDenied = false;
+        });
+      } else {
+        // No cached position — get a live GPS fix with generous timeout
+        setState(() {
+          _locationStatus = 'Getting GPS fix…';
+        });
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.low, // faster fix on budget devices
+            timeLimit: Duration(seconds: 30),
+          ),
+        );
+        setState(() {
+          _position = pos;
+          _locationStatus =
+              'Location: ${pos!.latitude.toStringAsFixed(4)}°N, ${pos.longitude.toStringAsFixed(4)}°E';
+          _locationDenied = false;
+        });
+      }
     } catch (e) {
+      debugPrint('Location error: $e');
       setState(() {
-        _locationStatus = 'Could not get location — using default';
+        _locationStatus = 'Could not get GPS — using default location';
         _locationDenied = true;
       });
     }
