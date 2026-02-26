@@ -15,7 +15,7 @@
 **Objective**: Overhaul the Go backend to use deterministic geographical data and actual predictive modeling regressions instead of hardcoded rules.
 
 ### Phase 2: Frontend Integration
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Update the Flutter app `api_service` and UI screens to properly consume the new `why` fields and dynamic `preservation_actions` arrays.
 
 ### Phase 3: Offline Resilience & Testing
