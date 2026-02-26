@@ -84,22 +84,31 @@ type ConfidenceBand struct {
 	Max float64 `json:"max"`
 }
 
+// PreservationAction represents a suggested preservation method ranked by effectiveness.
+type PreservationAction struct {
+	ActionName    string `json:"action_name"`
+	CostEstimate  string `json:"cost_estimate"`
+	Effectiveness string `json:"effectiveness"`
+	Rank          int    `json:"rank"`
+}
+
 // Recommendation is the top-level JSON payload returned to the frontend.
 type Recommendation struct {
-	FarmerID          string         `json:"farmer_id"`
-	CropName          string         `json:"crop_name"`
-	Action            string         `json:"action"` // "Harvest Now", "Wait", "Sell at Mandi", "Delay & Store Locally"
-	RecommendedMarket string         `json:"recommended_market"`
-	MarketScore       float64        `json:"market_score"`
-	ConfidenceBandMin float64        `json:"confidence_band_min"`
-	ConfidenceBandMax float64        `json:"confidence_band_max"`
-	Why               string         `json:"why"`
-	WhyHi             string         `json:"explainability_string_hi"`
-	WhyMr             string         `json:"explainability_string_mr"`
-	Weather           WeatherInfo    `json:"weather"`
-	Markets           []MarketOption `json:"markets"`
-	Storage           *StorageOption `json:"storage,omitempty"`
-	GeneratedAt       time.Time      `json:"generated_at"`
+	FarmerID          string               `json:"farmer_id"`
+	CropName          string               `json:"crop_name"`
+	Action            string               `json:"action"` // "Harvest Now", "Wait", "Sell at Mandi", "Delay & Store Locally"
+	RecommendedMarket string               `json:"recommended_market"`
+	MarketScore       float64              `json:"market_score"`
+	ConfidenceBandMin float64              `json:"confidence_band_min"`
+	ConfidenceBandMax float64              `json:"confidence_band_max"`
+	Why               string               `json:"why"`
+	WhyHi             string               `json:"explainability_string_hi"`
+	WhyMr             string               `json:"explainability_string_mr"`
+	Weather           WeatherInfo          `json:"weather"`
+	Markets           []MarketOption       `json:"markets"`
+	Storage           *StorageOption       `json:"storage,omitempty"`
+	Preservation      []PreservationAction `json:"preservation_actions"`
+	GeneratedAt       time.Time            `json:"generated_at"`
 }
 
 // SpoilageFactors holds environmental and logistical data to determine spoilage risk.

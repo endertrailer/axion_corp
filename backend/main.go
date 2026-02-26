@@ -180,6 +180,28 @@ func handleRecommendation(c *gin.Context) {
 	// ── Step 6: Localized Strings ──
 	whyHi, whyMr := generateLocalizedStrings(action, crop.Name, bestMarket.MarketName, confidenceMin, confidenceMax, weather, storageOpt)
 
+	// ── Step 7: Preservation Actions ──
+	preservationOptions := []PreservationAction{
+		{
+			ActionName:    "Use Ventilated Plastic Crates",
+			CostEstimate:  "₹50/crate",
+			Effectiveness: "High (Prevents 80% crushing)",
+			Rank:          1,
+		},
+		{
+			ActionName:    "Apply Neem-based Anti-fungal",
+			CostEstimate:  "₹120/acre",
+			Effectiveness: "Medium (Delays rot)",
+			Rank:          2,
+		},
+		{
+			ActionName:    "Cover with Tarpaulin in Transit",
+			CostEstimate:  "₹300/trip",
+			Effectiveness: "Low (Basic heat shield)",
+			Rank:          3,
+		},
+	}
+
 	recommendation := Recommendation{
 		FarmerID:          farmerID,
 		CropName:          crop.Name,
@@ -194,6 +216,7 @@ func handleRecommendation(c *gin.Context) {
 		Weather:           weather,
 		Markets:           marketOptions,
 		Storage:           storageOpt,
+		Preservation:      preservationOptions,
 		GeneratedAt:       time.Now(),
 	}
 
