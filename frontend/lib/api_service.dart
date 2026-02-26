@@ -145,6 +145,7 @@ class MarketOption {
   final double netProfitEstimate;
   final double marketScore;
   final String arrivalVolumeTrend;
+  final double priceTrendPct;
   final bool isAIRecommended;
 
   MarketOption({
@@ -156,6 +157,7 @@ class MarketOption {
     required this.netProfitEstimate,
     required this.marketScore,
     required this.arrivalVolumeTrend,
+    this.priceTrendPct = 0.0,
     this.isAIRecommended = false,
   });
 
@@ -169,6 +171,7 @@ class MarketOption {
       netProfitEstimate: (json['net_profit_estimate'] ?? 0).toDouble(),
       marketScore: (json['market_score'] ?? 0).toDouble(),
       arrivalVolumeTrend: json['arrival_volume_trend'] ?? 'NORMAL',
+      priceTrendPct: (json['price_trend_pct'] ?? 0).toDouble(),
       isAIRecommended: json['is_ai_recommended'] ?? false,
     );
   }
@@ -288,6 +291,7 @@ class ApiService {
           netProfitEstimate: 2300.0,
           marketScore: 2097.13,
           arrivalVolumeTrend: 'HIGH',
+          priceTrendPct: -5.2,
         ),
         MarketOption(
           marketName: 'Ghazipur Mandi',
@@ -298,6 +302,7 @@ class ApiService {
           netProfitEstimate: 2200.0,
           marketScore: 2435.65,
           arrivalVolumeTrend: 'LOW',
+          priceTrendPct: 12.4,
         ),
         MarketOption(
           marketName: 'Vashi APMC',
@@ -308,6 +313,7 @@ class ApiService {
           netProfitEstimate: 2100.0,
           marketScore: 1545.60,
           arrivalVolumeTrend: 'NORMAL',
+          priceTrendPct: 2.1,
         ),
       ],
       storage: StorageOption(

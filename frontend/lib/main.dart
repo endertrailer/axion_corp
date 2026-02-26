@@ -939,6 +939,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           if (isBest) _badge(_t('best'), const Color(0xFF2E7D32)),
                           if (isHigh) _badge(_t('high_supply'), const Color(0xFFF57F17)),
                           if (m.arrivalVolumeTrend == 'LOW') _badge(_t('low_supply'), const Color(0xFF1565C0)),
+                          if (m.priceTrendPct != 0) 
+                            _badge('${m.priceTrendPct > 0 ? '+' : ''}${m.priceTrendPct.toStringAsFixed(1)}%', 
+                                   m.priceTrendPct > 0 ? const Color(0xFF2E7D32) : const Color(0xFFD32F2F)),
                           Flexible(
                             child: Text(m.marketName,
                                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
