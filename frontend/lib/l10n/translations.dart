@@ -571,6 +571,30 @@ class AppTranslations {
       'or': 'ଆପଣଙ୍କ ଭାଷା ବାଛନ୍ତୁ',
       'ur': 'اپنی زبان منتخب کریں',
     },
+    'top_pick': {
+      'en': 'AgriChain Top Pick', 'hi': 'AgriChain की सर्वोत्तम पसंद', 'mr': 'AgriChain सर्वोत्तम निवड',
+      'bn': 'AgriChain সেরা বাছাই', 'ta': 'AgriChain சிறந்த தேர்வு', 'te': 'AgriChain ఉత్తమ ఎంపిక',
+      'gu': 'AgriChain શ્રેષ્ઠ પસંદગી', 'kn': 'AgriChain ಅತ್ಯುತ್ತಮ ಆಯ್ಕೆ', 'ml': 'AgriChain മികച്ച തിരഞ്ഞെടുപ്പ്',
+      'pa': 'AgriChain ਸਭ ਤੋਂ ਵਧੀਆ ਚੋਣ', 'ur': 'AgriChain بہترین انتخاب',
+    },
+    'sort_by_distance': {
+      'en': 'Distance', 'hi': 'दूरी', 'mr': 'अंतर', 'bn': 'দূরত্ব', 'ta': 'தூரம்', 'te': 'దూరం',
+      'gu': 'અંતર', 'kn': 'ದೂರ', 'ml': 'ദൂരം', 'pa': 'ਦੂਰੀ', 'ur': 'فاصلہ',
+    },
+    'sort_by_price': {
+      'en': 'Price', 'hi': 'कीमत', 'mr': 'किंमत', 'bn': 'দাম', 'ta': 'விலை', 'te': 'ధర',
+      'gu': 'ભાવ', 'kn': 'ಬೆಲೆ', 'ml': 'വില', 'pa': 'ਕੀਮਤ', 'ur': 'قیمت',
+    },
+    'net_profit': {
+      'en': 'Net Profit', 'hi': 'शुद्ध लाभ', 'mr': 'निव्वळ नफा', 'bn': 'নিট লাভ', 'ta': 'நிகர இலாபம்',
+      'te': 'నికర లాభం', 'gu': 'ચોખ્ખો નફો', 'kn': 'ನಿವ್ವಳ ಲಾಭ', 'ml': 'അറ്റ ലാഭം',
+      'pa': 'ਸ਼ੁੱਧ ਲਾਭ', 'ur': 'خالص منافع',
+    },
+    'all_markets': {
+      'en': 'All Markets', 'hi': 'सभी बाजार', 'mr': 'सर्व बाजार', 'bn': 'সব বাজার', 'ta': 'அனைத்து சந்தைகள்',
+      'te': 'అన్ని మార్కెట్లు', 'gu': 'બધા બજાર', 'kn': 'ಎಲ್ಲಾ ಮಾರುಕಟ್ಟೆ', 'ml': 'എല്ലാ വിപണികളും',
+      'pa': 'ਸਾਰੀਆਂ ਮੰਡੀਆਂ', 'ur': 'تمام منڈیاں',
+    },
   };
 
   /// Get a translated string for the given key and language code.

@@ -101,28 +101,37 @@ class WeatherInfo {
 class MarketOption {
   final String marketName;
   final double currentPrice;
+  final double distanceKm;
   final double transitTimeHr;
   final double spoilageLoss;
+  final double netProfitEstimate;
   final double marketScore;
   final String arrivalVolumeTrend;
+  final bool isAIRecommended;
 
   MarketOption({
     required this.marketName,
     required this.currentPrice,
+    required this.distanceKm,
     required this.transitTimeHr,
     required this.spoilageLoss,
+    required this.netProfitEstimate,
     required this.marketScore,
     required this.arrivalVolumeTrend,
+    this.isAIRecommended = false,
   });
 
   factory MarketOption.fromJson(Map<String, dynamic> json) {
     return MarketOption(
       marketName: json['market_name'] ?? '',
       currentPrice: (json['current_price'] ?? 0).toDouble(),
+      distanceKm: (json['distance_km'] ?? 0).toDouble(),
       transitTimeHr: (json['transit_time_hr'] ?? 0).toDouble(),
       spoilageLoss: (json['spoilage_loss_pct'] ?? 0).toDouble(),
+      netProfitEstimate: (json['net_profit_estimate'] ?? 0).toDouble(),
       marketScore: (json['market_score'] ?? 0).toDouble(),
       arrivalVolumeTrend: json['arrival_volume_trend'] ?? 'NORMAL',
+      isAIRecommended: json['is_ai_recommended'] ?? false,
     );
   }
 }
@@ -204,24 +213,30 @@ class ApiService {
         MarketOption(
           marketName: 'Azadpur Mandi',
           currentPrice: 2500,
+          distanceKm: 25.0,
           transitTimeHr: 0.8,
           spoilageLoss: 1.5,
+          netProfitEstimate: 2300.0,
           marketScore: 2097.13,
           arrivalVolumeTrend: 'HIGH',
         ),
         MarketOption(
           marketName: 'Ghazipur Mandi',
           currentPrice: 2350,
+          distanceKm: 32.0,
           transitTimeHr: 0.5,
           spoilageLoss: 1.1,
+          netProfitEstimate: 2200.0,
           marketScore: 2435.65,
           arrivalVolumeTrend: 'LOW',
         ),
         MarketOption(
           marketName: 'Vashi APMC',
           currentPrice: 2800,
+          distanceKm: 1450.0,
           transitTimeHr: 18.2,
           spoilageLoss: 12.3,
+          netProfitEstimate: 2100.0,
           marketScore: 1545.60,
           arrivalVolumeTrend: 'NORMAL',
         ),
