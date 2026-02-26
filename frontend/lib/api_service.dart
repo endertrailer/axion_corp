@@ -17,6 +17,7 @@ class Recommendation {
   final WeatherInfo weather;
   final List<MarketOption> markets;
   final StorageOption? storage;
+  final List<PreservationAction> preservationActions;
   final DateTime generatedAt;
 
   Recommendation({
@@ -33,6 +34,7 @@ class Recommendation {
     required this.weather,
     required this.markets,
     this.storage,
+    this.preservationActions = const [],
     required this.generatedAt,
   });
 
@@ -56,6 +58,10 @@ class Recommendation {
       storage: json['storage'] != null
           ? StorageOption.fromJson(json['storage'])
           : null,
+      preservationActions: (json['preservation_actions'] as List<dynamic>?)
+              ?.map((a) => PreservationAction.fromJson(a))
+              .toList() ??
+          [],
       generatedAt: DateTime.tryParse(json['generated_at'] ?? '') ?? DateTime.now(),
     );
   }
@@ -159,6 +165,29 @@ class StorageOption {
   }
 }
 
+class PreservationAction {
+  final String actionName;
+  final String costEstimate;
+  final String effectiveness;
+  final int rank;
+
+  PreservationAction({
+    required this.actionName,
+    required this.costEstimate,
+    required this.effectiveness,
+    required this.rank,
+  });
+
+  factory PreservationAction.fromJson(Map<String, dynamic> json) {
+    return PreservationAction(
+      actionName: json['action_name'] ?? '',
+      costEstimate: json['cost_estimate'] ?? '',
+      effectiveness: json['effectiveness'] ?? '',
+      rank: json['rank'] ?? 0,
+    );
+  }
+}
+
 /// Service to communicate with the AgriChain Go backend.
 class ApiService {
   static String get _baseUrl => ApiConfig.baseUrl;
@@ -247,6 +276,26 @@ class ApiService {
         pricePerKg: 2.0,
         capacityMT: 500,
       ),
+      preservationActions: [
+        PreservationAction(
+          actionName: 'Use Ventilated Plastic Crates',
+          costEstimate: '₹50/crate',
+          effectiveness: 'High (Prevents 80% crushing)',
+          rank: 1,
+        ),
+        PreservationAction(
+          actionName: 'Apply Neem-based Anti-fungal',
+          costEstimate: '₹120/acre',
+          effectiveness: 'Medium (Delays rot)',
+          rank: 2,
+        ),
+        PreservationAction(
+          actionName: 'Cover with Tarpaulin in Transit',
+          costEstimate: '₹300/trip',
+          effectiveness: 'Low (Basic heat shield)',
+          rank: 3,
+        ),
+      ],
       generatedAt: DateTime.now(),
     );
   }

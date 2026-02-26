@@ -427,6 +427,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildStorageCard(rec.storage!),
             const SizedBox(height: 12),
           ],
+          if (rec.preservationActions.isNotEmpty) ...[
+            _buildRankedPreservationActions(rec.preservationActions),
+            const SizedBox(height: 12),
+          ],
           _buildWeatherCard(rec.weather),
           const SizedBox(height: 12),
           _buildMarketsCard(rec.markets),
@@ -843,6 +847,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
       child: Text(text,
           style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  // ─── RANKED PRESERVATION ACTIONS ────────────────
+
+  Widget _buildRankedPreservationActions(List<PreservationAction> actions) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.shield, color: Color(0xFF1565C0)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Ranked Preservation Actions',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            ...actions.map((a) {
+              return Card(
+                elevation: 0,
+                color: const Color(0xFFF8F9FA),
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(color: Color(0xFFE0E0E0), width: 1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFF1565C0),
+                    radius: 16,
+                    child: Text(
+                      '#${a.rank}',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                  title: Text(
+                    a.actionName,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  subtitle: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Cost: ${a.costEstimate}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                      Text(a.effectiveness, style: const TextStyle(fontSize: 11, color: Color(0xFF2E7D32), fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 }
