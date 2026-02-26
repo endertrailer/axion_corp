@@ -1,0 +1,96 @@
+# AgriChain Project Documentation
+
+## 1. Overview
+AgriChain is an intelligent, localized recommendation engine for farmers. It connects a Go backend with a Flutter app to provide actionable advice on whether to sell crops immediately or store them. It dynamically evaluates real-time market prices, calculates spoilage risks based on weather and transit, and generates a composite "Market Score" to maximize farmer net profit. 
+
+## 2. Architecture Components
+### 2.1 Go Backend (`main.go`, `models.go`)
+- **Web Framework**: Gin (`github.com/gin-gonic/gin`)
+- **Database**: PostgreSQL (connected via `sqlx`)
+- **Environment**: Managed via `.env` (`joho/godotenv`)
+- **Role**: Handles API requests from the frontend, coordinates external data fetches concurrently, runs the decision engine, and returns a localized, structured JSON recommendation.
+
+### 2.2 Flutter Frontend (`api_service.dart`, `api_config.dart`)
+- **Role**: Presents the UI to the user (farmer), displaying the recommendation, weather, market options, and preservation techniques.
+- **Networking**: Uses the `http` package to call the backend. Features built-in dummy/failsafe data for demonstration purposes if the backend cannot be reached.
+
+## 3. External API Integrations
+1. **data.gov.in (Live Mandi Prices)**
+   - Fetches live market prices for a specific crop (e.g., Tomato).
+   - Prices returned are Modal Prices per Quintal (100kg).
+2. **Open-Meteo (Weather API)**
+   - Inputs: Farmer's Latitude and Longitude.
+   - Outputs: Current temperature (°C), Relative Humidity (%), and Weather Code (translated to conditions like "Clear Sky", "Rain", etc.).
+3. **OSRM (Transit Time)**
+   - *Intended*: Calculates driving duration between the farmer and specific markets.
+   - *Fallback*: If OSRM fails, falls back to calculating driving time based on Haversine distance assuming a 40 km/h average local speed.
+
+## 4. Database Models (`models.go`)
+- **`Farmer`**: Geolocation (`LocationLat`, `LocationLon`), `Phone`
+- **`Crop`**: `Name`, `IdealTemp`, `BaselineSpoilageRate`
+- **`MandiPrice`**: `CurrentPrice` (per quintal), `ArrivalVolumeTrend` (HIGH, NORMAL, LOW)
+- **`StorageFacility`**: `CapacityMT`, `PricePerKg`, `LocationLat`, `LocationLon`
+
+## 5. Calculations & Formulas
+
+### 5.1 Haversine Distance
+Calculates the great-circle distance between two GPS coordinates (Farmer and Market / Storage).
+```go
+a = sin²(Δlat/2) + cos(lat1)*cos(lat2)*sin²(Δlon/2)
+c = 2 * atan2(√a, √(1−a))
+distance = R * c // R = 6371.0 km
+```
+
+### 5.2 Transit Time
+```go
+// If OSRM Router fails:
+Transit Time (hrs) = Haversine Distance (km) / 40.0 km/h
+```
+
+### 5.3 Spoilage Loss Percentage
+Spoilage is influenced heavily by transit time and how far the current temperature deviates from the crop's ideal temperature.
+```go
+Temperature Factor = 1.0 + (|CurrentTemp - IdealTemp| / 10.0)
+Spoilage Percentage = BaselineSpoilageRate * TransitTime (hrs) * Temperature Factor
+```
+
+### 5.4 Effective Price & Net Profit
+Because the Mandi price is effectively per Quintal (100kg), it represents the price per 100kg natively in the backend logic without division (used as a large base number).
+```go
+Transport Penalty = TransitTime (hrs) * 50.0
+Effective Price = CurrentPrice * (1 - (Spoilage Percentage / 100.0))
+Net Profit Estimate = Effective Price - Transport Penalty
+```
+
+### 5.5 Market Score & Glut Penalties
+Once Net Profit is estimated, the AI applies psychological/market-trend adjustments to formulate the final `Market Score`.
+```go
+Base Score = Net Profit Estimate
+if ArrivalVolumeTrend == "HIGH":
+    Score *= 0.85 // 15% penalty (Distress sale risk)
+else if ArrivalVolumeTrend == "LOW":
+    Score *= 1.05 // 5% bonus (Undersupply opportunity)
+```
+
+### 5.6 Confidence Band
+To manage farmer expectations, prices are presented in a ±10% confidence band relative to the best market's current price.
+```go
+Band Min = BestMarket.CurrentPrice * 0.90
+Band Max = BestMarket.CurrentPrice * 1.10
+```
+
+## 6. AI Decision Engine Logic (`decideActionV2`)
+The backend selects an overarching Action (`"Wait"`, `"Sell at Mandi"`, or `"Delay & Store Locally"`) based on:
+1. **Weather**: If it is raining ("Rain", "Thunderstorm", "Rain Showers"), action becomes **"Wait"**.
+2. **Temperature Deviation**:
+   - Too Cold (> 5°C below ideal): Action = **"Wait"**.
+   - Too Hot (> 5°C above ideal): Encourages immediate harvest to avoid field rotting.
+3. **Arrival Volumes (Staggering Protocol)**: 
+   - If the best market has a **"HIGH"** arrival trend, the system overrides to **"Delay & Store Locally"**, mapping the farmer to the nearest Cold Storage facility to prevent a distressed sale.
+
+## 7. Localization (`generateLocalizedStrings`)
+The backend generates the "Why" string (explainability) natively in three formats inside the JSON payload:
+1. `why` (English)
+2. `explainability_string_hi` (Hindi)
+3. `explainability_string_mr` (Marathi)
+*Translations use hardcoded templates mapping dynamic variables like temperatures, weather codes, and prices into the respective languages.*

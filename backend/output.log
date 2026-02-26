@@ -1,0 +1,49 @@
+nohup: ignoring input
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /api/v1/health            --> main.main.func1 (3 handlers)
+[GIN-debug] GET    /api/v1/recommendation    --> main.handleRecommendation (3 handlers)
+2026/02/26 22:59:06 🚀 AgriChain API listening on 0.0.0.0:8080
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on 0.0.0.0:8080
+2026/02/26 22:59:21 ⚠ DB fetch farmer failed: pq: relation "farmers" does not exist at column 63 (42P01) – using fallback
+2026/02/26 22:59:21 ⚠ DB fetch crop failed: pq: relation "crops" does not exist at column 70 (42P01) – using fallback
+2026/02/26 22:59:21 📍 Using location: lat=28.7041, lon=77.1025
+2026/02/26 22:59:21 ⚠ DB fetch mandi prices failed: pq: relation "mandi_prices" does not exist at column 110 (42P01) – trying live API
+2026/02/26 22:59:31 Live API failed, falling back to mock data: data.gov.in request failed: Get "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000011380f4db44c14e7676f2d1587ed61b2c&format=json&filters[commodity]=Tomato&sort[arrival_date]=desc&limit=10": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+[GIN] 2026/02/26 - 22:59:35 | 200 | 14.614300462s |             ::1 | GET      "/api/v1/recommendation?farmer_id=f1&crop_id=c1&lat=28.7041&lon=77.1025"
+2026/02/26 22:59:54 ⚠ DB fetch farmer failed: pq: relation "farmers" does not exist at column 63 (42P01) – using fallback
+2026/02/26 22:59:54 ⚠ DB fetch crop failed: pq: relation "crops" does not exist at column 70 (42P01) – using fallback
+2026/02/26 22:59:54 📍 Using location: lat=28.7041, lon=77.1025
+2026/02/26 22:59:54 ⚠ DB fetch mandi prices failed: pq: relation "mandi_prices" does not exist at column 110 (42P01) – trying live API
+2026/02/26 23:00:04 Live API failed, falling back to mock data: data.gov.in request failed: Get "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000011380f4db44c14e7676f2d1587ed61b2c&format=json&filters[commodity]=Tomato&sort[arrival_date]=desc&limit=10": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+[GIN] 2026/02/26 - 23:00:07 | 200 | 12.827338976s |             ::1 | GET      "/api/v1/recommendation?farmer_id=f1&crop_id=c1&lat=28.7041&lon=77.1025"
+2026/02/26 23:17:03 ⚠ DB fetch farmer failed: pq: relation "farmers" does not exist at column 63 (42P01) – using fallback
+2026/02/26 23:17:03 ⚠ DB fetch crop failed: pq: relation "crops" does not exist at column 70 (42P01) – using fallback
+2026/02/26 23:17:03 📍 Using location: lat=21.1458, lon=79.0882
+2026/02/26 23:17:03 ⚠ DB fetch mandi prices failed: pq: relation "mandi_prices" does not exist at column 110 (42P01) – trying live API
+2026/02/26 23:17:13 Live API failed, falling back to mock data: data.gov.in request failed: Get "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000011380f4db44c14e7676f2d1587ed61b2c&format=json&filters[commodity]=Tomato&sort[arrival_date]=desc&limit=10": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+[GIN] 2026/02/26 - 23:17:17 | 200 | 14.340678956s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lat=21.145800&lon=79.088153"
+2026/02/26 23:29:29 ⚠ DB fetch farmer failed: pq: relation "farmers" does not exist at column 63 (42P01) – using fallback
+2026/02/26 23:29:29 ⚠ DB fetch crop failed: pq: relation "crops" does not exist at column 70 (42P01) – using fallback
+2026/02/26 23:29:29 📍 Using location: lat=21.1458, lon=79.0882
+2026/02/26 23:29:29 ⚠ DB fetch mandi prices failed: pq: relation "mandi_prices" does not exist at column 110 (42P01) – trying live API
+2026/02/26 23:29:39 Live API failed, falling back to mock data: data.gov.in request failed: Get "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000011380f4db44c14e7676f2d1587ed61b2c&format=json&filters[commodity]=Tomato&sort[arrival_date]=desc&limit=10": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+[GIN] 2026/02/26 - 23:29:43 | 200 | 14.135354483s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lat=21.145800&lon=79.088153"
+2026/02/26 23:31:06 ⚠ DB fetch farmer failed: pq: relation "farmers" does not exist at column 63 (42P01) – using fallback
+2026/02/26 23:31:06 ⚠ DB fetch crop failed: pq: relation "crops" does not exist at column 70 (42P01) – using fallback
+2026/02/26 23:31:06 📍 Using location: lat=21.1458, lon=79.0882
+2026/02/26 23:31:06 ⚠ DB fetch mandi prices failed: pq: relation "mandi_prices" does not exist at column 110 (42P01) – trying live API
+2026/02/26 23:31:16 Live API failed, falling back to mock data: data.gov.in request failed: Get "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000011380f4db44c14e7676f2d1587ed61b2c&format=json&filters[commodity]=Tomato&sort[arrival_date]=desc&limit=10": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+[GIN] 2026/02/26 - 23:31:20 | 200 | 13.957964545s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lat=21.145800&lon=79.088153"
+2026/02/26 23:43:22 ⚠ DB fetch farmer failed: pq: relation "farmers" does not exist at column 63 (42P01) – using fallback
+2026/02/26 23:43:22 ⚠ DB fetch crop failed: pq: relation "crops" does not exist at column 70 (42P01) – using fallback
+2026/02/26 23:43:22 📍 Using location: lat=21.1458, lon=79.0882
+2026/02/26 23:43:22 ⚠ DB fetch mandi prices failed: pq: relation "mandi_prices" does not exist at column 110 (42P01) – trying live API
+2026/02/26 23:43:32 Live API failed, falling back to mock data: data.gov.in request failed: Get "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000011380f4db44c14e7676f2d1587ed61b2c&format=json&filters[commodity]=Tomato&sort[arrival_date]=desc&limit=10": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+[GIN] 2026/02/26 - 23:43:35 | 200 | 13.040296943s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=c3d4e5f6-a7b8-9012-cdef-123456789012&lat=21.145800&lon=79.088153"

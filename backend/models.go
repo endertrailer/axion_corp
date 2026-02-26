@@ -33,6 +33,7 @@ type MandiPrice struct {
 	MarketLat          float64   `json:"market_lat" db:"market_lat"`
 	MarketLon          float64   `json:"market_lon" db:"market_lon"`
 	ArrivalVolumeTrend string    `json:"arrival_volume_trend" db:"arrival_volume_trend"`
+	PriceTrendPct      float64   `json:"price_trend_pct" db:"price_trend_pct"`
 	Timestamp          time.Time `json:"timestamp" db:"timestamp"`
 }
 
@@ -59,6 +60,7 @@ type MarketOption struct {
 	NetProfitEstimate  float64 `json:"net_profit_estimate"`
 	MarketScore        float64 `json:"market_score"`
 	ArrivalVolumeTrend string  `json:"arrival_volume_trend"`
+	PriceTrendPct      float64 `json:"price_trend_pct"`
 	IsAIRecommended    bool    `json:"is_ai_recommended"`
 }
 
@@ -127,4 +129,6 @@ type SpoilageFactors struct {
 	TemperatureCelsius float64
 	HumidityPercent    float64
 	TransitTimeHours   float64
+	RoadQuality        string // "paved", "unpaved", "mixed"
+	CropMaturity       string // "Early", "Optimal", "Late"
 }
