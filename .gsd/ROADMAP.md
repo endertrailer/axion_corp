@@ -51,3 +51,11 @@
 **Must-Haves**:
 1. When the user taps the microphone and speaks, the STT engine must stream the recognized transcription directly into the ChatDialog's text input box in real-time, allowing them to verify or edit their query before it sends.
 2. The AI assistant must strictly reply out loud (TTS) *only* when the user submits their query via voice. Text inputs strictly result in text outputs.
+
+### Phase 6: Dynamic Crop Selection
+**Status**: ✅ Complete
+**Objective**: Allow the user to toggle which crop they are tracking directly from the Dashboard, fetching updated market, environmental, and preservation data for that specific item.
+
+**Must-Haves**:
+1. The backend must mathematically evaluate dynamic crop UUIDs for Tomatoes, Onions, and Potatoes.
+2. The frontend must feature a dynamic crop switcher in the AppBar, visually reloading the metrics instantly upon selection.

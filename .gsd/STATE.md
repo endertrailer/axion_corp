@@ -1,11 +1,11 @@
 ## Current Position
-- **Phase**: 5 (completed)
+- **Phase**: 6 (completed)
 - **Task**: All tasks complete
 - **Status**: Verified
 
 ## Last Session Summary
-Phase 5 (Voice UX Enhancements) finalized successfully. 1 plan completed binding `flutter_speech_to_text` hardware hooks directly into the frontend `TextField` state for real-time auditory transcriptions, and cementing the TTS loop.
+Phase 6 (Dynamic Crop Selection) finalized successfully. 1 plan completed migrating the hardcoded `_cropId` backend fallback script into a dynamic multi-variable mapping list, and tying it to a realtime Flutter Dropdown AppBar widget.
 
 ## Next Steps
-1. The developer can verify the live transcription directly in the active `flutter run` session.
-2. Formulate Phase 6 requirements or safely pause the milestone.
+1. The developer can verify the multi-crop switching ability instantaneously in the existing Android Emulator session.
+2. Finalize any further Milestone enhancements or move into Phase 7 structural enhancements.

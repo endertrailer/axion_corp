@@ -371,8 +371,26 @@ func fetchCrop(id string) Crop {
 		}
 		log.Printf("⚠ DB fetch crop failed: %v – using fallback", err)
 	}
+	if id == "d4e5f6a7-b890-12cd-ef12-345678901234" {
+		return Crop{
+			ID:                   id,
+			Name:                 "Onion",
+			IdealTemp:            20.0,
+			BaselineSpoilageRate: 1.0,
+			CreatedAt:            time.Now(),
+		}
+	} else if id == "e5f6a7b8-9012-cdef-1234-567890123456" {
+		return Crop{
+			ID:                   id,
+			Name:                 "Potato",
+			IdealTemp:            15.0,
+			BaselineSpoilageRate: 1.5,
+			CreatedAt:            time.Now(),
+		}
+	}
+
 	return Crop{
-		ID:                   id,
+		ID:                   "c3d4e5f6-a7b8-9012-cdef-123456789012",
 		Name:                 "Tomato",
 		IdealTemp:            25.0,
 		BaselineSpoilageRate: 2.5,

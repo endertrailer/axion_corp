@@ -14,6 +14,7 @@ Transform AgriChain into a fully App-Wide Native Language Engine, ensuring that 
 6. **[Phase 3]** Build an Interactive Chatbot Dialog Interface: When the Assistant FAB is tapped, launch a dialog box containing a chat history, text input field, and voice chat integration.
 7. **[Phase 4]** Chat UX Polish: Ensure fully localized UI texts inside the Chatbot, correct the home FAB icon to represent "Chat", and restrict TTS audio playback to *only* trigger when responding to voice inputs.
 8. **[Phase 5]** Voice UX Enhancements: When using STT, stream the recognized speech directly into the text input box for visibility, and enforce strict audio response mirroring.
+9. **[Phase 6]** Dynamic Crop Selection: Add a Crop switch UI in the frontend and map three crop types (Tomato, Onion, Potato) in the backend to break the hardcoded "Tomato" restriction.
 
 ## Non-Goals (Out of Scope)
 - Adding languages outside of the 22 Indian Scheduled Languages + English.
@@ -41,3 +42,5 @@ Farmers and agricultural logistics personnel who are primarily comfortable in th
 - [x] **[Phase 4]** The LLM plays TTS audio *only* if the user initiated the prompt via STT, remaining silent for text submissions.
 - [x] **[Phase 5]** Speech-to-Text outputs are typed live into the ChatDialog's text input box.
 - [x] **[Phase 5]** Voice Inputs trigger Voice Outputs. Text Inputs trigger Text Outputs.
+- [x] **[Phase 6]** A dropdown exists in the Dashboard AppBar to toggle tracked crops.
+- [x] **[Phase 6]** The backend safely distinguishes between Tomato, Onion, and Potato UUIDs.

@@ -59,7 +59,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _langInitDone = false;
 
   final String _farmerId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
-  final String _cropId = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
+  String _cropId = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
 
   FlutterTts flutterTts = FlutterTts();
   bool isSpeaking = false;
@@ -388,6 +388,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // Crop Dropdown
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(50),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _cropId,
+                  icon: const Icon(Icons.swap_vert, color: Colors.white, size: 20),
+                  dropdownColor: const Color(0xFF1B5E20),
+                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  onChanged: (String? newValue) {
+                    if (newValue != null && newValue != _cropId) {
+                      setState(() {
+                        _cropId = newValue;
+                        _loading = true; // Show loading indicator immediately
+                      });
+                      _initLocationThenFetch();
+                    }
+                  },
+                  items: const [
+                    DropdownMenuItem(value: 'c3d4e5f6-a7b8-9012-cdef-123456789012', child: Text('🍅 Tomato')),
+                    DropdownMenuItem(value: 'd4e5f6a7-b890-12cd-ef12-345678901234', child: Text('🧅 Onion')),
+                    DropdownMenuItem(value: 'e5f6a7b8-9012-cdef-1234-567890123456', child: Text('🥔 Potato')),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          
           // Language switch button
           InkWell(
             borderRadius: BorderRadius.circular(8),
