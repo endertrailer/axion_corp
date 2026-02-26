@@ -337,48 +337,24 @@ func fetchWeatherFromDB(lat, lon, idealTemp float64) WeatherInfo {
 
 // ── Historical AI Models ────────────────────
 
-type HistoricalDataPoint struct {
-	Day   int
-	Price float64
-	Vol   float64
-}
+// ── Historical AI Models ────────────────────
 
-// simulateHistoricalData generates 30 days of synthetic historical data based on current price and a seed
-func simulateHistoricalData(currentPrice float64, marketName string) []HistoricalDataPoint {
-	var data []HistoricalDataPoint
-	price := currentPrice * 0.8 // simulate price starting lower
-
-	// deterministic seed from market name
-	baseSeed := 0
-	for _, c := range marketName {
-		baseSeed += int(c)
+// forecastPriceTrend performs a simple linear regression over the historical prices to project a 7-day trend (pct)
+func forecastPriceTrend(prices []float64) float64 {
+	if len(prices) < 3 {
+		return 0 // Need at least 3 points for a meaningful trend
 	}
 
-	for i := 1; i <= 30; i++ {
-		noise := (float64((baseSeed+i)%11) - 5) / 100.0 // +/- 5%
-		trend := float64(baseSeed%5) / 100.0            // + 0 to 4%
-		price = price * (1.0 + noise + trend)
-
-		vol := 1000.0 + float64((baseSeed*i)%500)
-		data = append(data, HistoricalDataPoint{Day: i, Price: price, Vol: vol})
+	// We'll use up to 15 recent prices
+	if len(prices) > 15 {
+		prices = prices[len(prices)-15:]
 	}
-	// Force the last day to exactly match current live price
-	data[29].Price = currentPrice
-	return data
-}
 
-// forecastPriceTrend performs a simple linear regression over the final 15 days to project a 7-day trend (pct)
-func forecastPriceTrend(data []HistoricalDataPoint) float64 {
-	if len(data) < 15 {
-		return 0
-	}
-	n := 15.0
+	n := float64(len(prices))
 	sumX, sumY, sumXY, sumX2 := 0.0, 0.0, 0.0, 0.0
 
-	startIdx := len(data) - 15
-	for i := startIdx; i < len(data); i++ {
-		x := float64(i - startIdx)
-		y := data[i].Price
+	for i, y := range prices {
+		x := float64(i)
 		sumX += x
 		sumY += y
 		sumXY += x * y
@@ -391,7 +367,7 @@ func forecastPriceTrend(data []HistoricalDataPoint) float64 {
 	}
 	slope := (n*sumXY - sumX*sumY) / denom
 
-	current := data[len(data)-1].Price
+	current := prices[len(prices)-1]
 	projected := current + (slope * 7)
 
 	if current <= 0 {
@@ -401,30 +377,60 @@ func forecastPriceTrend(data []HistoricalDataPoint) float64 {
 	return pctChange
 }
 
-// calculateVolumeTrend compares recent 3-day volume avg against previous 7-day avg
-func calculateVolumeTrend(data []HistoricalDataPoint) string {
-	if len(data) < 10 {
+// calculateVolumeTrend infers arrival volume based on recent price pressure.
+// A sharp drop in price implies a HIGH arrival glut. A sharp rise implies LOW arrivals.
+func calculateVolumeTrend(prices []float64) string {
+	if len(prices) < 5 {
 		return "NORMAL"
 	}
 
 	recentSum := 0.0
-	for i := len(data) - 3; i < len(data); i++ {
-		recentSum += data[i].Vol
+	for i := len(prices) - 3; i < len(prices); i++ {
+		recentSum += prices[i]
 	}
 	recentAvg := recentSum / 3.0
 
 	pastSum := 0.0
-	for i := len(data) - 10; i < len(data)-3; i++ {
-		pastSum += data[i].Vol
+	// use up to 7 days prior to the last 3 days
+	pastCount := 0
+	for i := len(prices) - 10; i < len(prices)-3; i++ {
+		if i >= 0 {
+			pastSum += prices[i]
+			pastCount++
+		}
 	}
-	pastAvg := pastSum / 7.0
 
-	if recentAvg > pastAvg*1.25 {
+	if pastCount == 0 {
+		return "NORMAL"
+	}
+
+	pastAvg := pastSum / float64(pastCount)
+
+	// Price dropped significantly -> huge arrivals (Glut)
+	if recentAvg < pastAvg*0.85 {
 		return "HIGH"
-	} else if recentAvg < pastAvg*0.75 {
-		return "LOW"
+	} else if recentAvg > pastAvg*1.15 {
+		return "LOW" // Price spiked -> shortage
 	}
 	return "NORMAL"
+}
+
+// fetchHistoricalPrices fetches chronological price slices for a given market and crop
+func fetchHistoricalPrices(mandiName string, cropName string) []float64 {
+	var prices []float64
+	if db != nil {
+		err := db.Select(&prices, `
+			SELECT dp.price 
+			FROM daily_prices dp
+			JOIN mandis m ON m.id = dp.mandi_id
+			WHERE m.name = $1 AND dp.crop_name = $2
+			ORDER BY dp.recorded_at ASC
+			LIMIT 15`, mandiName, cropName)
+		if err == nil {
+			return prices
+		}
+	}
+	return prices
 }
 
 // ── Market Prices (PostGIS Cache) ─────────────
@@ -450,7 +456,11 @@ func fetchMarketPricesFromDB(cropID string, cropName string, lat, lon float64) [
 		if err == nil && len(rows) > 0 {
 			var prices []MandiPrice
 			for i, r := range rows {
-				histData := simulateHistoricalData(r.Price, r.MarketName)
+				pricesList := fetchHistoricalPrices(r.MarketName, cropName)
+				if len(pricesList) == 0 {
+					pricesList = []float64{r.Price} // Fallback to at least current payload price
+				}
+
 				prices = append(prices, MandiPrice{
 					ID:                 fmt.Sprintf("db-%d", i+1),
 					MarketName:         r.MarketName,
@@ -458,8 +468,8 @@ func fetchMarketPricesFromDB(cropID string, cropName string, lat, lon float64) [
 					CurrentPrice:       r.Price,
 					MarketLat:          r.Lat,
 					MarketLon:          r.Lon,
-					ArrivalVolumeTrend: calculateVolumeTrend(histData),
-					PriceTrendPct:      math.Round(forecastPriceTrend(histData)*100) / 100,
+					ArrivalVolumeTrend: calculateVolumeTrend(pricesList),
+					PriceTrendPct:      math.Round(forecastPriceTrend(pricesList)*100) / 100,
 					Timestamp:          r.RecordedAt,
 				})
 			}
@@ -470,10 +480,10 @@ func fetchMarketPricesFromDB(cropID string, cropName string, lat, lon float64) [
 
 	// FALLBACK
 	now := time.Now()
-	m1Hist := simulateHistoricalData(2500, "Azadpur Mandi")
-	m2Hist := simulateHistoricalData(2800, "Vashi APMC")
-	m3Hist := simulateHistoricalData(2350, "Ghazipur Mandi")
-	m4Hist := simulateHistoricalData(2650, "Pune APMC")
+	m1Hist := []float64{2400, 2450, 2480, 2520, 2500}
+	m2Hist := []float64{2700, 2720, 2750, 2780, 2800}
+	m3Hist := []float64{2500, 2480, 2420, 2380, 2350} // Dropping
+	m4Hist := []float64{2600, 2610, 2630, 2640, 2650}
 
 	return []MandiPrice{
 		{ID: "m1", MarketName: "Azadpur Mandi", CropID: cropID, CurrentPrice: 2500, MarketLat: 28.7041, MarketLon: 77.1525, ArrivalVolumeTrend: calculateVolumeTrend(m1Hist), PriceTrendPct: math.Round(forecastPriceTrend(m1Hist)*100) / 100, Timestamp: now},
