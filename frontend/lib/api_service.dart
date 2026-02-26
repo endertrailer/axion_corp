@@ -12,6 +12,8 @@ class Recommendation {
   final double confidenceBandMin;
   final double confidenceBandMax;
   final String why;
+  final String whyHi;
+  final String whyMr;
   final WeatherInfo weather;
   final List<MarketOption> markets;
   final StorageOption? storage;
@@ -26,6 +28,8 @@ class Recommendation {
     required this.confidenceBandMin,
     required this.confidenceBandMax,
     required this.why,
+    this.whyHi = '',
+    this.whyMr = '',
     required this.weather,
     required this.markets,
     this.storage,
@@ -42,6 +46,8 @@ class Recommendation {
       confidenceBandMin: (json['confidence_band_min'] ?? 0).toDouble(),
       confidenceBandMax: (json['confidence_band_max'] ?? 0).toDouble(),
       why: json['why'] ?? '',
+      whyHi: json['explainability_string_hi'] ?? '',
+      whyMr: json['explainability_string_mr'] ?? '',
       weather: WeatherInfo.fromJson(json['weather'] ?? {}),
       markets: (json['markets'] as List<dynamic>?)
               ?.map((m) => MarketOption.fromJson(m))
@@ -52,6 +58,18 @@ class Recommendation {
           : null,
       generatedAt: DateTime.tryParse(json['generated_at'] ?? '') ?? DateTime.now(),
     );
+  }
+
+  /// Get the explainability string for the given language code.
+  String getWhyForLang(String lang) {
+    switch (lang) {
+      case 'hi':
+        return whyHi.isNotEmpty ? whyHi : why;
+      case 'mr':
+        return whyMr.isNotEmpty ? whyMr : why;
+      default:
+        return why;
+    }
   }
 
   bool get isStoreAction => action.toLowerCase().contains('store');

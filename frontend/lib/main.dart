@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'api_service.dart';
+import 'l10n/translations.dart';
 
 void main() {
   runApp(const AgriChainApp());
@@ -47,8 +48,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _locationStatus = 'Detecting location…';
   bool _locationDenied = false;
 
+  // Language state — default English
+  String _lang = 'en';
+
   final String _farmerId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
   final String _cropId = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
+
+  /// Shorthand for translation lookups.
+  String _t(String key) => AppTranslations.t(key, _lang);
 
   @override
   void initState() {
@@ -62,7 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _loading = true;
       _error = null;
-      _locationStatus = 'Detecting location…';
+      _locationStatus = _t('detecting_location');
     });
 
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -173,10 +180,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // ── Language Toggle ──
+          Container(
+            margin: const EdgeInsets.only(right: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(40),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _lang,
+                icon: const Icon(Icons.language, color: Colors.white, size: 18),
+                dropdownColor: const Color(0xFF2E7D32),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'en', child: Text('EN')),
+                  DropdownMenuItem(value: 'hi', child: Text('हिं')),
+                  DropdownMenuItem(value: 'mr', child: Text('मरा')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setState(() => _lang = val);
+                },
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _initLocationThenFetch,
-            tooltip: 'Refresh',
+            tooltip: _t('refresh'),
           ),
         ],
       ),
@@ -198,9 +234,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Analysing markets…',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+            Text(
+              _t('analysing_markets'),
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
           ],
         ),
@@ -221,7 +257,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ElevatedButton.icon(
                 onPressed: _initLocationThenFetch,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+                label: Text(_t('retry')),
               ),
             ],
           ),
@@ -295,10 +331,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ─── PRIMARY RECOMMENDATION CARD (Phase 2) ────
+  // ─── PRIMARY RECOMMENDATION CARD ──────────────
 
   Widget _buildRecommendationCard(Recommendation rec) {
-    // Phase 2: Change color based on action type
     final isStore = rec.isStoreAction;
     final isHarvest = rec.action.toLowerCase().contains('harvest') ||
         rec.action.toLowerCase().contains('sell');
@@ -307,17 +342,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     IconData actionIcon;
 
     if (isStore) {
-      actionColor = const Color(0xFFF57F17); // Amber/warning for "Delay & Store"
+      actionColor = const Color(0xFFF57F17);
       actionIcon = Icons.warehouse;
     } else if (isHarvest) {
-      actionColor = const Color(0xFF2E7D32); // Green for "Sell at Mandi"
+      actionColor = const Color(0xFF2E7D32);
       actionIcon = Icons.agriculture;
     } else {
-      actionColor = const Color(0xFFE65100); // Orange for "Wait"
+      actionColor = const Color(0xFFE65100);
       actionIcon = Icons.hourglass_top;
     }
 
-    final reasons = _parseReasons(rec.why);
+    // Localized action text
+    final localizedAction = AppTranslations.translateAction(rec.action, _lang);
+
+    // Localized explainability string
+    final localizedWhy = rec.getWhyForLang(_lang);
+    final reasons = _parseReasons(localizedWhy);
 
     return Card(
       elevation: 3,
@@ -325,7 +365,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Top section: Action ──
           Container(
             decoration: BoxDecoration(
               color: actionColor,
@@ -337,7 +376,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Icon(actionIcon, size: 48, color: Colors.white),
                 const SizedBox(height: 12),
                 Text(
-                  rec.action,
+                  localizedAction,
                   style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
@@ -355,7 +394,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // ── Market score banner ──
           Container(
             color: actionColor.withAlpha(25),
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
@@ -365,7 +403,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const Icon(Icons.star, color: Color(0xFFFFC107), size: 20),
                 const SizedBox(width: 6),
                 Text(
-                  'Market Score: ${rec.marketScore.toStringAsFixed(0)}',
+                  '${_t('market_score')}: ${rec.marketScore.toStringAsFixed(0)}',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -376,7 +414,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // ── "Why are we suggesting this?" ──
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
@@ -384,7 +421,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               leading: Icon(Icons.lightbulb_outline, color: actionColor),
               title: Text(
-                'Why are we suggesting this?',
+                _t('why_suggesting'),
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
@@ -420,7 +457,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return parts.where((p) => p.trim().isNotEmpty).map((p) => p.trim()).toList();
   }
 
-  // ─── CONFIDENCE BAND CARD (Phase 2) ───────────
+  // ─── CONFIDENCE BAND CARD ─────────────────────
 
   Widget _buildConfidenceBandCard(Recommendation rec) {
     final isStore = rec.isStoreAction;
@@ -438,14 +475,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Icon(Icons.trending_up, color: bandColor),
                 const SizedBox(width: 8),
-                const Text(
-                  'Expected Market Range',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                Text(
+                  _t('expected_market_range'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            // Price range display
             Container(
               padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               decoration: BoxDecoration(
@@ -473,7 +509,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       Text(
-                        'Low',
+                        _t('low'),
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
@@ -498,7 +534,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       Text(
-                        'High',
+                        _t('high'),
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
@@ -514,14 +550,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: const Color(0xFFFFF3E0),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.warning_amber, color: Color(0xFFF57F17), size: 18),
-                    SizedBox(width: 8),
+                    const Icon(Icons.warning_amber, color: Color(0xFFF57F17), size: 18),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Market is oversupplied. Prices may drop below this range if sold immediately.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFFE65100)),
+                        _t('oversupply_warning'),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFFE65100)),
                       ),
                     ),
                   ],
@@ -534,7 +570,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ─── STORAGE CARD (Phase 2) ───────────────────
+  // ─── STORAGE CARD ─────────────────────────────
 
   Widget _buildStorageCard(StorageOption storage) {
     return Card(
@@ -546,13 +582,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.warehouse, color: Color(0xFFF57F17)),
-                SizedBox(width: 8),
+                const Icon(Icons.warehouse, color: Color(0xFFF57F17)),
+                const SizedBox(width: 8),
                 Text(
-                  'Recommended Storage',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  _t('recommended_storage'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -581,17 +617,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       _storageStat(
                         '${storage.distanceKm.toStringAsFixed(1)} km',
-                        'Distance',
+                        _t('distance'),
                         Icons.near_me,
                       ),
                       _storageStat(
                         '₹${storage.pricePerKg.toStringAsFixed(1)}/kg',
-                        'Per Day',
+                        _t('per_day'),
                         Icons.payments,
                       ),
                       _storageStat(
                         '${storage.capacityMT.toStringAsFixed(0)} MT',
-                        'Capacity',
+                        _t('capacity'),
                         Icons.inventory_2,
                       ),
                     ],
@@ -633,13 +669,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.wb_sunny, color: Color(0xFFFFA000)),
-                SizedBox(width: 8),
+                const Icon(Icons.wb_sunny, color: Color(0xFFFFA000)),
+                const SizedBox(width: 8),
                 Text(
-                  'Weather Conditions',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  _t('weather_conditions'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -649,17 +685,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 _weatherStat(
                   '${weather.currentTemp.toStringAsFixed(1)}°C',
-                  'Temperature',
+                  _t('temperature'),
                   Icons.thermostat,
                 ),
                 _weatherStat(
                   '${weather.humidity.toStringAsFixed(0)}%',
-                  'Humidity',
+                  _t('humidity'),
                   Icons.water_drop,
                 ),
                 _weatherStat(
                   weather.condition,
-                  'Condition',
+                  _t('condition'),
                   Icons.cloud,
                 ),
               ],
@@ -687,7 +723,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ─── MARKETS COMPARISON CARD (Phase 2) ────────
+  // ─── MARKETS COMPARISON CARD ──────────────────
 
   Widget _buildMarketsCard(List<MarketOption> markets) {
     return Card(
@@ -698,13 +734,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.store, color: Color(0xFF2E7D32)),
-                SizedBox(width: 8),
+                const Icon(Icons.store, color: Color(0xFF2E7D32)),
+                const SizedBox(width: 8),
                 Text(
-                  'Market Comparison',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  _t('market_comparison'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -740,12 +776,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           Row(
                             children: [
-                              if (isBest)
-                                _badge('BEST', const Color(0xFF2E7D32)),
+                              if (isBest) _badge(_t('best'), const Color(0xFF2E7D32)),
                               if (isHigh)
-                                _badge('HIGH SUPPLY', const Color(0xFFF57F17)),
+                                _badge(_t('high_supply'), const Color(0xFFF57F17)),
                               if (m.arrivalVolumeTrend == 'LOW')
-                                _badge('LOW SUPPLY', const Color(0xFF1565C0)),
+                                _badge(_t('low_supply'), const Color(0xFF1565C0)),
                               Flexible(
                                 child: Text(
                                   m.marketName,
@@ -773,9 +808,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isBest
-                            ? const Color(0xFF2E7D32)
-                            : Colors.black54,
+                        color: isBest ? const Color(0xFF2E7D32) : Colors.black54,
                       ),
                     ),
                   ],
