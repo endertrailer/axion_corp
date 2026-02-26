@@ -23,3 +23,13 @@
 2. Implement Speech-to-Text capturing audio correctly into the selected UI language context.
 3. Transmit audio text securely to the backend or use local Gemini integration to reply with relevant contextual data.
 4. Synthesize that reply back through TTS natively.
+
+### Phase 3: Interactive Chatbot Dialog Interface
+**Status**: 🚧 Planned
+**Objective**: Transform the single AI microphone interaction into a full-fledged chat interface dialog. Include conversation history bubbles, quick-action suggestion chips, text input, and voice input integration.
+
+**Must-Haves**:
+1. Tapping the AI Assistant FAB opens a modal/bottom-sheet chat window.
+2. The UI must match a modern standard digital assistant interface (Header bar, scrollable message list, input area at the bottom).
+3. The input area must contain both a text field and a submit/microphone button for dual modalities.
+4. Chat bubbles must show the user's queries and the AI's contextual responses, keeping track of history for the session.
