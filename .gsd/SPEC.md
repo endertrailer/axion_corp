@@ -3,16 +3,17 @@
 **Status**: DRAFT (Review with User)
 
 ## Core Value Proposition
-AgriChain is a Farm-to-Market Intelligence Platform designed to help Indian farmers minimize post-harvest produce loss (which is currently up to 40% due to poor timing and market mismatch). The AI system ingests weather, soil health, and historical Mandi price data to recommend optimal harvest windows and target markets. It also suggests dynamic post-harvest preservation actions based on transit time and storage conditions to maximize the farmer's net profit.
+AgriChain is a Farm-to-Market Intelligence Platform designed to help Indian farmers minimize post-harvest produce loss (which is currently up to 40% due to poor timing and market mismatch). The platform utilizes robust, async machine learning to ingest historical Mandi price data, dynamic soil health, and weather to recommend optimal harvest windows and target markets. It delivers highly personalized, dynamic post-harvest preservation actions and explains them via Audio-First UX.
 
 ## User Personas
 * **The Farmer**: Basic Android smartphone user. Requires minimal data literacy. Outputs must be in plain, localized languages (Hindi, Marathi, English).
 * **Core Need**: "Tell me *when* to harvest, *where* to sell it to make the most money, *how* to prevent rot during transit, and explicitly *why* you are giving me this advice."
 
 ## Technical Stack
-* **Backend**: Go (Gin, sqlx, PostgreSQL)
+* **Backend**: Go (Gin, sqlx, PostgreSQL with PostGIS extension for spatial queries)
 * **Frontend**: Flutter / Dart
-* **Integrations**: data.gov.in (Mandi Prices), Open-Meteo (Weather/Soil Moisture), OSRM (Transit Time)
+* **Integrations**: data.gov.in (Mandi Prices), Open-Meteo (Weather/Soil Moisture), OSRM (Transit Time), Small Language Models (SLM), Text-to-Speech (TTS), WhatsApp Business API.
+* **Architecture Paradigms**: Asynchronous Data Ingestion (Cron), Offline-First Apps, Audio-First UX.
 
 ## AI / Predictive Engine
 * **Price Forecasting**: Real-time regressions over historical data to predict 7-day market trends.
@@ -20,9 +21,10 @@ AgriChain is a Farm-to-Market Intelligence Platform designed to help Indian farm
 * **Staggering Protocol**: Volume-trend detection to flag market gluts ("HIGH" arrivals) and dynamically reroute to Cold Storage to prevent distress sales.
 
 ## Key Principles & Non-Negotiables
-1. **Explainability & Trust**: The system must inherently explain *why* an action is recommended (e.g., citing a 17% price forecast increase or a 91% humidity risk). It cannot just say "Go to Market X".
-2. **Deterministic Stability**: A specific farm shouldn't yield entirely erratic mock baseline data; geographical hashing provides stability while layering live open-source weather data.
-3. **Low-Bandwidth Reality Check**: The architecture assumes poor rural connections (e.g., minimizing live API chokepoints by predicting and pre-stating knowns where possible).
+1. **Explainability via SLMs**: The system must inherently explain *why* an action is recommended using culturally empathetic, dynamic language via Small Language Models, delivered as Audio-First (TTS) for accessibility.
+2. **Asynchronous Ingestion**: Never run external APIs (gov.in, weather) synchronously during a farmer's request. Maintain a PostGIS database updated via cron, and serve recommendations instantly.
+3. **Genuine Reality & Crowdsourcing**: Base spoilage calculations on reality (unpaved roads, truck vibration, crop maturity). Base price confidence on local WhatsApp crowdsourcing feedback loops.
+4. **Offline-First Resilience**: Always cache last known data. Use SMS/USSD as fallbacks when internet fails completely.
 
 ---
 *(Generated as part of the Get Shit Done for Antigravity standard framework integration.)*
