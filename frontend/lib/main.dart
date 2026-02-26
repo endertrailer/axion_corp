@@ -466,7 +466,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      body: _buildBody(),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFE8F5E9), Color(0xFFF1F8E9), Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: _buildBody(),
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -711,46 +720,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final localizedAction = AppTranslations.translateAction(rec.action, _lang);
     final reasons = _parseReasons(rec.why);
 
+    final gradient = isStore 
+        ? const LinearGradient(colors: [Color(0xFFE65100), Color(0xFFFF9800)], begin: Alignment.topLeft, end: Alignment.bottomRight)
+        : isHarvest
+            ? const LinearGradient(colors: [Color(0xFF1B5E20), Color(0xFF4CAF50)], begin: Alignment.topLeft, end: Alignment.bottomRight)
+            : const LinearGradient(colors: [Color(0xFFE65100), Color(0xFFFF9800)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 6,
+      shadowColor: actionColor.withAlpha(100),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
             decoration: BoxDecoration(
-              color: actionColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              gradient: gradient,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
             child: Column(
               children: [
-                Icon(actionIcon, size: 48, color: Colors.white),
-                const SizedBox(height: 12),
+                Icon(actionIcon, size: 56, color: Colors.white),
+                const SizedBox(height: 16),
                 Text(
                   localizedAction,
                   style: const TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white,
+                    fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white,
+                    letterSpacing: 0.5,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
                   '${rec.cropName}  •  ${rec.recommendedMarket}',
-                  style: const TextStyle(fontSize: 15, color: Colors.white70),
+                  style: const TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.w500),
                   textAlign: TextAlign.center,
                 ),
                 if (rec.harvestWindow.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(50),
-                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white.withAlpha(40),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.white.withAlpha(80)),
                     ),
                     child: Text(
                       '${_t('harvest_window')}: ${rec.harvestWindow}',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
                     ),
                   ),
                 ],
@@ -758,16 +776,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           Container(
-            color: actionColor.withAlpha(25),
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+            decoration: BoxDecoration(
+              color: actionColor.withAlpha(20),
+              border: Border(bottom: BorderSide(color: actionColor.withAlpha(40))),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.star, color: Color(0xFFFFC107), size: 20),
-                const SizedBox(width: 6),
+                const Icon(Icons.star, color: Color(0xFFFFC107), size: 24),
+                const SizedBox(width: 8),
                 Text(
                   '${_t('market_score')}: ${rec.marketScore.toStringAsFixed(0)}',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: actionColor),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: actionColor),
                 ),
               ],
             ),
@@ -829,10 +850,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final bandColor = isStore ? const Color(0xFFF57F17) : const Color(0xFF2E7D32);
 
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      shadowColor: bandColor.withAlpha(50),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -906,11 +928,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildStorageCard(StorageOption storage) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      shadowColor: const Color(0xFFF57F17).withAlpha(50),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       color: const Color(0xFFFFF8E1),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -966,10 +989,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildWeatherCard(WeatherInfo weather) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      shadowColor: Colors.blue.withAlpha(50),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1007,10 +1031,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildSoilHealthCard(SoilHealth soil) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      shadowColor: const Color(0xFF689F38).withAlpha(50),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1058,10 +1083,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildMarketsCard(List<MarketOption> markets) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      shadowColor: const Color(0xFF2E7D32).withAlpha(50),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -165,6 +165,22 @@ class _ChatDialogState extends State<ChatDialog> {
     );
   }
 
+  Widget _buildActionChip(String translationKey) {
+    return ActionChip(
+      label: Text(
+        AppTranslations.t(translationKey, widget.lang),
+        style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2E7D32)),
+      ),
+      backgroundColor: const Color(0xFF2E7D32).withAlpha(15),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: const Color(0xFF2E7D32).withAlpha(40)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      onPressed: () => _sendMessage(AppTranslations.t(translationKey, widget.lang)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -179,9 +195,13 @@ class _ChatDialogState extends State<ChatDialog> {
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: const BoxDecoration(
-              color: Color(0xFF1976D2), // Blue dashboard style
+              gradient: LinearGradient(
+                colors: [Color(0xFF2E7D32), Color(0xFF689F38)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(24),
                 topRight: Radius.circular(24),
@@ -190,8 +210,8 @@ class _ChatDialogState extends State<ChatDialog> {
             child: Row(
               children: [
                 const CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.smart_toy, color: Color(0xFF1976D2)),
+                  backgroundColor: Colors.white24,
+                  child: Icon(Icons.smart_toy, color: Colors.white),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -238,40 +258,34 @@ class _ChatDialogState extends State<ChatDialog> {
           // Quick Actions
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                ActionChip(
-                  label: Text(AppTranslations.t('weather_check', widget.lang)),
-                  onPressed: () => _sendMessage(AppTranslations.t('weather_check', widget.lang)),
-                ),
+                _buildActionChip('weather_check'),
                 const SizedBox(width: 8),
-                ActionChip(
-                  label: Text(AppTranslations.t('what_should_i_do', widget.lang)),
-                  onPressed: () => _sendMessage(AppTranslations.t('what_should_i_do', widget.lang)),
-                ),
+                _buildActionChip('what_should_i_do'),
                 const SizedBox(width: 8),
-                ActionChip(
-                  label: Text(AppTranslations.t('ranked_preservation_actions', widget.lang)),
-                  onPressed: () => _sendMessage(AppTranslations.t('ranked_preservation_actions', widget.lang)),
-                ),
+                _buildActionChip('ranked_preservation_actions'),
                 const SizedBox(width: 8),
-                ActionChip(
-                  label: Text(AppTranslations.t('market_prices_action', widget.lang)),
-                  onPressed: () => _sendMessage(AppTranslations.t('market_prices_action', widget.lang)),
-                ),
+                _buildActionChip('market_prices_action'),
               ],
             ),
           ),
 
           // Input Area
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8).copyWith(
-              bottom: MediaQuery.of(context).viewInsets.bottom + 8,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12).copyWith(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 12,
             ),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(top: BorderSide(color: Colors.grey[300]!)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(10),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -298,7 +312,7 @@ class _ChatDialogState extends State<ChatDialog> {
                 ),
                 const SizedBox(width: 8),
                 CircleAvatar(
-                  backgroundColor: const Color(0xFF1976D2),
+                  backgroundColor: _isListening ? Colors.redAccent : const Color(0xFF2E7D32),
                   child: IconButton(
                     icon: Icon(
                       _isTyping 
