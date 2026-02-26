@@ -156,6 +156,27 @@ func handleRecommendation(c *gin.Context) {
 		)
 	}
 
+	// Calculate Spoilage Risk and generate farmer trust explanation
+	factors := SpoilageFactors{
+		TemperatureCelsius: weather.CurrentTemp,
+		HumidityPercent:    weather.Humidity,
+		TransitTimeHours:   bestMarket.TransitTimeHr,
+	}
+	riskLevel := CalculateSpoilageRisk(factors)
+
+	rainProb := 0
+	switch weather.Condition {
+	case "Rain", "Rain Showers", "Thunderstorm":
+		rainProb = 80
+	case "Drizzle":
+		rainProb = 50
+	case "Partly Cloudy":
+		rainProb = 20
+	}
+
+	explanationStr := GenerateExplanation(bestMarket.MarketName, bestMarket.NetProfitEstimate, riskLevel, rainProb)
+	why = explanationStr + "\n\n" + why
+
 	// ── Step 6: Localized Strings ──
 	whyHi, whyMr := generateLocalizedStrings(action, crop.Name, bestMarket.MarketName, confidenceMin, confidenceMax, weather, storageOpt)
 
@@ -401,6 +422,21 @@ func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 // ══════════════════════════════════════════════
 //  SCORING & DECISION ENGINE (Phase 2)
 // ══════════════════════════════════════════════
+
+func CalculateSpoilageRisk(factors SpoilageFactors) string {
+	if factors.TemperatureCelsius > 35 && factors.TransitTimeHours > 10 {
+		return "HIGH"
+	}
+	if factors.TemperatureCelsius > 30 || factors.TransitTimeHours > 5 {
+		return "MEDIUM"
+	}
+	return "LOW"
+}
+
+func GenerateExplanation(marketName string, netProfitPerKg float64, riskLevel string, rainProb int) string {
+	return fmt.Sprintf("Sell at %s. It offers ₹%.2f/kg more after transport costs. Spoilage risk during transit is %s. Weather context: %d%% chance of rain tomorrow.",
+		marketName, netProfitPerKg, riskLevel, rainProb)
+}
 
 func computeMarketScores(farmer Farmer, crop Crop, markets []MandiPrice, weather WeatherInfo) []MarketOption {
 	options := make([]MarketOption, 0, len(markets))

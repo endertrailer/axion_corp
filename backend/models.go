@@ -101,3 +101,10 @@ type Recommendation struct {
 	Storage           *StorageOption `json:"storage,omitempty"`
 	GeneratedAt       time.Time      `json:"generated_at"`
 }
+
+// SpoilageFactors holds environmental and logistical data to determine spoilage risk.
+type SpoilageFactors struct {
+	TemperatureCelsius float64
+	HumidityPercent    float64
+	TransitTimeHours   float64
+}
