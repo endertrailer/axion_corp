@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -79,6 +80,19 @@ func handleRecommendation(c *gin.Context) {
 	// ── Step 1: Fetch farmer + crop from DB (with fallback) ──
 	farmer := fetchFarmer(farmerID)
 	crop := fetchCrop(cropID)
+
+	// Override farmer location with live GPS coordinates if provided
+	if latStr := c.Query("lat"); latStr != "" {
+		if lat, err := strconv.ParseFloat(latStr, 64); err == nil {
+			farmer.LocationLat = lat
+		}
+	}
+	if lonStr := c.Query("lon"); lonStr != "" {
+		if lon, err := strconv.ParseFloat(lonStr, 64); err == nil {
+			farmer.LocationLon = lon
+		}
+	}
+	log.Printf("📍 Using location: lat=%.4f, lon=%.4f", farmer.LocationLat, farmer.LocationLon)
 
 	// ── Step 2: Concurrent external data fetches ──
 	var wg sync.WaitGroup

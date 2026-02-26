@@ -99,16 +99,23 @@ class ApiService {
   static const String _baseUrl = 'http://10.0.2.2:8080';
 
   /// Fetches a recommendation for the given farmer and crop.
+  /// If [lat] and [lon] are provided, the backend uses them for
+  /// weather and transit calculations instead of stored location.
   static Future<Recommendation> getRecommendation({
     required String farmerId,
     required String cropId,
+    double? lat,
+    double? lon,
   }) async {
-    final url = Uri.parse(
-      '$_baseUrl/api/v1/recommendation?farmer_id=$farmerId&crop_id=$cropId',
-    );
+    var urlStr =
+        '$_baseUrl/api/v1/recommendation?farmer_id=$farmerId&crop_id=$cropId';
+    if (lat != null && lon != null) {
+      urlStr += '&lat=${lat.toStringAsFixed(6)}&lon=${lon.toStringAsFixed(6)}';
+    }
+    final url = Uri.parse(urlStr);
 
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      final response = await http.get(url).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return Recommendation.fromJson(data);
@@ -119,6 +126,7 @@ class ApiService {
       return _fallbackRecommendation(farmerId);
     }
   }
+
 
   /// Offline / demo fallback so the UI always works.
   static Recommendation _fallbackRecommendation(String farmerId) {

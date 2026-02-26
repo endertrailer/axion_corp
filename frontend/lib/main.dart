@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'api_service.dart';
 
 void main() {
@@ -42,6 +43,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _loading = true;
   String? _error;
 
+  // Location state
+  Position? _position;
+  String _locationStatus = 'Detecting location…';
+  bool _locationDenied = false;
+
   // Demo IDs – in production these come from auth / farmer profile.
   final String _farmerId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
   final String _cropId = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
@@ -49,6 +55,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _initLocationThenFetch();
+  }
+
+  // ─── LOCATION DETECTION ───────────────────────
+
+  Future<void> _initLocationThenFetch() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+      _locationStatus = 'Detecting location…';
+    });
+
+    // 1. Check if location services are enabled
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      setState(() {
+        _locationStatus = 'Location services disabled — using default location';
+        _locationDenied = true;
+      });
+      // Proceed with no GPS (backend uses default)
+      _fetchRecommendation();
+      return;
+    }
+
+    // 2. Check & request permissions
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        setState(() {
+          _locationStatus = 'Location permission denied — using default location';
+          _locationDenied = true;
+        });
+        _fetchRecommendation();
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      setState(() {
+        _locationStatus = 'Location permanently denied — using default location';
+        _locationDenied = true;
+      });
+      _fetchRecommendation();
+      return;
+    }
+
+    // 3. Get current position
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      setState(() {
+        _position = pos;
+        _locationStatus =
+            'Location: ${pos.latitude.toStringAsFixed(4)}°N, ${pos.longitude.toStringAsFixed(4)}°E';
+        _locationDenied = false;
+      });
+    } catch (e) {
+      setState(() {
+        _locationStatus = 'Could not get location — using default';
+        _locationDenied = true;
+      });
+    }
+
     _fetchRecommendation();
   }
 
@@ -61,6 +135,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final rec = await ApiService.getRecommendation(
         farmerId: _farmerId,
         cropId: _cropId,
+        lat: _position?.latitude,
+        lon: _position?.longitude,
       );
       setState(() {
         _recommendation = rec;
@@ -90,7 +166,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _fetchRecommendation,
+            onPressed: _initLocationThenFetch,
             tooltip: 'Refresh',
           ),
         ],
@@ -101,13 +177,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Color(0xFF2E7D32)),
-            SizedBox(height: 16),
+            const CircularProgressIndicator(color: Color(0xFF2E7D32)),
+            const SizedBox(height: 16),
             Text(
+              _locationStatus,
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            const Text(
               'Analysing markets…',
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
@@ -128,7 +210,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(_error!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
               ElevatedButton.icon(
-                onPressed: _fetchRecommendation,
+                onPressed: _initLocationThenFetch,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
               ),
@@ -140,16 +222,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final rec = _recommendation!;
     return RefreshIndicator(
-      onRefresh: _fetchRecommendation,
+      onRefresh: _initLocationThenFetch,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _buildLocationBanner(),
+          const SizedBox(height: 12),
           _buildRecommendationCard(rec),
           const SizedBox(height: 12),
           _buildWeatherCard(rec.weather),
           const SizedBox(height: 12),
           _buildMarketsCard(rec.markets),
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  // ─── LOCATION BANNER ──────────────────────────
+
+  Widget _buildLocationBanner() {
+    final icon = _locationDenied ? Icons.location_off : Icons.my_location;
+    final color = _locationDenied ? Colors.orange : const Color(0xFF2E7D32);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withAlpha(25),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withAlpha(80)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _locationStatus,
+              style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w500),
+            ),
+          ),
+          if (_locationDenied)
+            GestureDetector(
+              onTap: () => Geolocator.openLocationSettings(),
+              child: Text(
+                'Enable',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
         ],
       ),
     );
