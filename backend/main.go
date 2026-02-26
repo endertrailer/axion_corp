@@ -1295,8 +1295,28 @@ func handleChat(c *gin.Context) {
 	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil || resp.StatusCode != http.StatusOK {
-		log.Printf("Chat SLM API failed: err %v", err)
-		c.JSON(http.StatusOK, ChatResponse{Reply: "I'm sorry, I cannot process your request right now."})
+		status := 0
+		var bodyStr string
+		if resp != nil {
+			status = resp.StatusCode
+			if resp.Body != nil {
+				b, _ := io.ReadAll(resp.Body)
+				bodyStr = string(b)
+				resp.Body.Close()
+			}
+		}
+		log.Printf("Chat SLM API failed. Status: %d, err: %v, Body: %s", status, err, bodyStr)
+
+		fallbackReply := "I'm currently experiencing high network traffic. Please try again in about a minute."
+		if status == 429 {
+			if langCode == "hi" {
+				fallbackReply = "सर्वर पर अभी अधिक लोड है। कृपया एक मिनट प्रतीक्षा करें।"
+			} else {
+				fallbackReply = "Google Gemini rate limit exceeded. Please wait a minute before querying."
+			}
+		}
+
+		c.JSON(http.StatusOK, ChatResponse{Reply: fallbackReply})
 		return
 	}
 	defer resp.Body.Close()
