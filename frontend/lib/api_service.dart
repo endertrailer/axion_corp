@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 
 /// Data model matching the Go backend's Recommendation JSON payload (Phase 2).
@@ -21,6 +22,7 @@ class Recommendation {
   final StorageOption? storage;
   final List<PreservationAction> preservationActions;
   final DateTime generatedAt;
+  bool isOffline;
 
   Recommendation({
     required this.farmerId,
@@ -40,6 +42,7 @@ class Recommendation {
     this.storage,
     this.preservationActions = const [],
     required this.generatedAt,
+    this.isOffline = false,
   });
 
   factory Recommendation.fromJson(Map<String, dynamic> json) {
@@ -69,6 +72,7 @@ class Recommendation {
               .toList() ??
           [],
       generatedAt: DateTime.tryParse(json['generated_at'] ?? '') ?? DateTime.now(),
+      isOffline: json['is_offline'] ?? false,
     );
   }
 
@@ -244,12 +248,31 @@ class ApiService {
     try {
       final response = await http.get(url).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
+        // Cache the raw JSON
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('cached_recommendation_raw', response.body);
+        
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return Recommendation.fromJson(data);
       }
       throw Exception('Server returned ${response.statusCode}');
     } catch (e) {
-      return _fallbackRecommendation(farmerId);
+      // Attempt offline cache retrieval
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cached = prefs.getString('cached_recommendation_raw');
+        if (cached != null) {
+          final data = jsonDecode(cached) as Map<String, dynamic>;
+          final rec = Recommendation.fromJson(data);
+          rec.isOffline = true;
+          return rec;
+        }
+      } catch (_) {}
+      
+      // Complete failure or no cache -> fallback mock
+      final fallback = _fallbackRecommendation(farmerId);
+      fallback.isOffline = true;
+      return fallback;
     }
   }
 

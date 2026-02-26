@@ -478,6 +478,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           _buildLocationBanner(),
           const SizedBox(height: 12),
+          if (rec.isOffline) _buildOfflineBanner(),
+          if (rec.isOffline) const SizedBox(height: 12),
           _buildRecommendationCard(rec),
           const SizedBox(height: 12),
           _buildConfidenceBandCard(rec),
@@ -536,6 +538,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  // ─── OFFLINE BANNER ───────────────────────────────
+
+  Widget _buildOfflineBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.orange.withAlpha(25),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.orange.withAlpha(80)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off, color: Colors.orange, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _t('offline') == 'offline' 
+                  ? 'Viewing cached offline data. Check connection to refresh.' 
+                  : _t('offline'),
+              style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w500),
+            ),
+          ),
         ],
       ),
     );
