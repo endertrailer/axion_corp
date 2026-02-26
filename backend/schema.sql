@@ -99,12 +99,14 @@ CREATE INDEX IF NOT EXISTS idx_crowdsource_reports_timestamp ON crowdsource_repo
 
 INSERT INTO farmers (id, location_lat, location_lon, phone) VALUES
     ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 28.6139, 77.2090, '+919876543210'),  -- New Delhi
-    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 19.0760, 72.8777, '+919876543211');  -- Mumbai
+    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 19.0760, 72.8777, '+919876543211')   -- Mumbai
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO crops (id, name, ideal_temp, baseline_spoilage_rate) VALUES
     ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'Tomato',  25.0, 2.5),
     ('d4e5f6a7-b8c9-0123-defa-234567890123', 'Wheat',   20.0, 0.5),
-    ('e5f6a7b8-c9d0-1234-efab-345678901234', 'Rice',    30.0, 1.0);
+    ('e5f6a7b8-c9d0-1234-efab-345678901234', 'Rice',    30.0, 1.0)
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO mandi_prices (market_name, crop_id, current_price, market_lat, market_lon, arrival_volume_trend) VALUES
     ('Azadpur Mandi',   'c3d4e5f6-a7b8-9012-cdef-123456789012', 2500.00, 28.7041, 77.1525, 'HIGH'),
@@ -117,4 +119,5 @@ INSERT INTO mandi_prices (market_name, crop_id, current_price, market_lat, marke
 INSERT INTO storage_facilities (id, name, location_lat, location_lon, capacity_mt, price_per_kg) VALUES
     ('f6a7b8c9-d0e1-2345-abcd-456789012345', 'Narela Cold Storage',       28.8526, 77.0932, 500.0, 2.0),
     ('a7b8c9d0-e1f2-3456-bcde-567890123456', 'Sonipat AgriStore',         28.9931, 77.0151, 300.0, 1.5),
-    ('b8c9d0e1-f2a3-4567-cdef-678901234567', 'Gurgaon FreshVault',        28.4595, 77.0266, 750.0, 2.5);
+    ('b8c9d0e1-f2a3-4567-cdef-678901234567', 'Gurgaon FreshVault',        28.4595, 77.0266, 750.0, 2.5)
+ON CONFLICT (id) DO NOTHING;

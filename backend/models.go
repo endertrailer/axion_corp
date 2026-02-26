@@ -114,8 +114,6 @@ type Recommendation struct {
 	ConfidenceBandMin float64              `json:"confidence_band_min"`
 	ConfidenceBandMax float64              `json:"confidence_band_max"`
 	Why               string               `json:"why"`
-	WhyHi             string               `json:"explainability_string_hi"`
-	WhyMr             string               `json:"explainability_string_mr"`
 	Weather           WeatherInfo          `json:"weather"`
 	Soil              SoilHealth           `json:"soil_health"`
 	Markets           []MarketOption       `json:"markets"`
@@ -131,4 +129,17 @@ type SpoilageFactors struct {
 	TransitTimeHours   float64
 	RoadQuality        string // "paved", "unpaved", "mixed"
 	CropMaturity       string // "Early", "Optimal", "Late"
+}
+
+// ---------- Chat Models ----------
+
+type ChatRequest struct {
+	FarmerID  string `json:"farmer_id"`
+	CropID    string `json:"crop_id"`
+	QueryText string `json:"query_text"`
+	Lang      string `json:"lang"`
+}
+
+type ChatResponse struct {
+	Reply string `json:"reply"`
 }

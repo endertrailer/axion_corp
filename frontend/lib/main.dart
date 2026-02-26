@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'api_service.dart';
 import 'l10n/translations.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(const AgriChainApp());
@@ -63,6 +65,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   FlutterTts flutterTts = FlutterTts();
   bool isSpeaking = false;
 
+  stt.SpeechToText _speechToText = stt.SpeechToText();
+  bool _isListening = false;
+  String _farmerQueryText = '';
+
   String _t(String key) => AppTranslations.t(key, _lang);
 
   @override
@@ -70,6 +76,107 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _loadLanguagePreference();
     _initTts();
+    _initStt();
+  }
+
+  Future<void> _initStt() async {
+    // STT requires Audio permission aggressively on modern Android versions
+    var status = await Permission.microphone.status;
+    if (!status.isGranted) {
+      await Permission.microphone.request();
+    }
+    await _speechToText.initialize(
+      onError: (val) => print('STT Error: $val'),
+      onStatus: (val) {
+        print('STT Status: $val');
+        if (val == 'done' || val == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+    );
+  }
+
+  void _startListening() async {
+    if (!_isListening) {
+      bool available = await _speechToText.initialize();
+      if (available) {
+        setState(() {
+          _isListening = true;
+          _farmerQueryText = '';
+        });
+        
+        // Map local Active _lang (hi) to specific Flutter STT locale (hi-IN)
+        String sttLocaleId = _lang == 'en' ? 'en-IN' : '$_lang-IN';
+        
+        _speechToText.listen(
+          onResult: (val) {
+            setState(() {
+              _farmerQueryText = val.recognizedWords;
+              // If val.hasConfidenceRating && val.confidence > 0 can be processed
+            });
+            // When user stops speaking and the final result is ready
+            if (val.finalResult) {
+              setState(() => _isListening = false);
+              _submitVoiceQuery(_farmerQueryText);
+            }
+          },
+          localeId: sttLocaleId,
+        );
+      }
+    }
+  }
+
+  void _stopListening() async {
+    await _speechToText.stop();
+    setState(() => _isListening = false);
+  }
+
+  void _submitVoiceQuery(String query) async {
+    if (query.trim().isEmpty) return;
+    print("Voice Query Collected: $query");
+    
+    // Show loading spinner
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+    );
+
+    try {
+      final reply = await ApiService.sendVoiceQuery(
+        farmerId: _farmerId,
+        cropId: _cropId,
+        queryText: query,
+        lang: _lang,
+      );
+
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(); // Dismiss loading
+      }
+
+      // Read out loud natively
+      await _speak(reply);
+
+      // Show the response briefly in a SnackBar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(reply),
+          duration: const Duration(seconds: 8),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: _t('close') != 'close' ? _t('close') : 'STOP',
+            onPressed: () => flutterTts.stop(),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   Future<void> _initTts() async {
@@ -91,9 +198,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    String locale = 'en-US';
-    if (_lang == 'hi') locale = 'hi-IN';
-    if (_lang == 'mr') locale = 'mr-IN';
+    // Default to Indian English, else use the selected language's ISO format
+    String locale = _lang == 'en' ? 'en-IN' : '$_lang-IN';
     
     await flutterTts.setLanguage(locale);
     setState(() => isSpeaking = true);
@@ -350,6 +456,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         cropId: _cropId,
         lat: _position?.latitude,
         lon: _position?.longitude,
+        lang: _lang,
       );
       setState(() {
         _recommendation = rec;
@@ -421,12 +528,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       body: _buildBody(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showLocationPicker,
-        icon: const Icon(Icons.edit_location_alt),
-        label: Text(_t('change_location') != 'change_location' ? _t('change_location') : 'Change Location'),
-        backgroundColor: const Color(0xFF2E7D32),
-        foregroundColor: Colors.white,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Left: Change Location
+            FloatingActionButton.extended(
+              heroTag: 'changeLocBtn',
+              onPressed: _showLocationPicker,
+              icon: const Icon(Icons.edit_location_alt),
+              label: Text(_t('change_location') != 'change_location' ? _t('change_location') : 'Change Location'),
+              backgroundColor: const Color(0xFF2E7D32),
+              foregroundColor: Colors.white,
+            ),
+            // Right: Floating AI Mic
+            GestureDetector(
+              onLongPressStart: (_) => _startListening(),
+              onLongPressEnd: (_) => _stopListening(),
+              child: FloatingActionButton(
+                heroTag: 'aiMicBtn',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(_t('hold_to_speak') != 'hold_to_speak' ? _t('hold_to_speak') : 'Hold to speak to AgriChain AI')),
+                  );
+                },
+                backgroundColor: _isListening ? Colors.redAccent : const Color(0xFF2E7D32),
+                foregroundColor: Colors.white,
+                child: Icon(_isListening ? Icons.mic : Icons.mic_none),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -523,8 +657,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 12),
           _buildConfidenceBandCard(rec),
           const SizedBox(height: 12),
-          if (rec.storage != null) ...[
-            _buildStorageCard(rec.storage!),
+          if (rec.storageOptions != null) ...[
+            _buildStorageCard(rec.storageOptions!),
             const SizedBox(height: 12),
           ],
           if (rec.preservationActions.isNotEmpty) ...[
@@ -535,7 +669,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 12),
           _buildWeatherCard(rec.weather),
           const SizedBox(height: 12),
-          _buildMarketsCard(rec.markets),
+          _buildMarketsCard(rec.alternativeMarkets),
           const SizedBox(height: 24),
         ],
       ),
@@ -630,8 +764,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final localizedAction = AppTranslations.translateAction(rec.action, _lang);
-    final localizedWhy = rec.getWhyForLang(_lang);
-    final reasons = _parseReasons(localizedWhy);
+    final reasons = _parseReasons(rec.why);
 
     return Card(
       elevation: 3,
@@ -710,11 +843,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   IconButton(
                     icon: Icon(
-                      isSpeaking ? Icons.stop_circle : Icons.volume_up,
-                      color: actionColor,
+                      isSpeaking ? Icons.volume_up : Icons.volume_down,
+                      color: isSpeaking ? Colors.white : Colors.white70,
                     ),
-                    onPressed: () => _speak(localizedWhy),
-                    tooltip: 'Listen to recommendation',
+                    onPressed: () => _speak(rec.why),
+                    tooltip: _t('listen_recommendation') != 'listen_recommendation' ? _t('listen_recommendation') : 'Listen',
                   ),
                 ],
               ),

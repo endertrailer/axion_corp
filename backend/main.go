@@ -52,6 +52,7 @@ func main() {
 	})
 
 	r.GET("/api/v1/recommendation", handleRecommendation)
+	r.POST("/api/v1/chat", handleChat)
 
 	// WhatsApp Webhook
 	r.POST("/api/v1/webhook/whatsapp", handleWhatsAppWebhook)
@@ -164,6 +165,8 @@ func handleRecommendation(c *gin.Context) {
 	roadQuality := c.DefaultQuery("road_quality", "mixed")
 	cropMaturity := c.DefaultQuery("crop_maturity", "Optimal")
 
+	lang := c.DefaultQuery("lang", "en") // Default to English if not provided
+
 	// ── Step 2: PostgreSQL / PostGIS Cached Fetches ──
 	var wg sync.WaitGroup
 	var weather WeatherInfo
@@ -258,7 +261,7 @@ func handleRecommendation(c *gin.Context) {
 	why = explanationStr + "\n\n" + why
 
 	// ── Step 6: Localized Strings via SLM ──
-	whyHi, whyMr := generateLocalizedStrings(why, action, crop.Name, bestMarket.MarketName)
+	whyLocalized := generateLocalizedStrings(why, action, crop.Name, bestMarket.MarketName, lang)
 
 	// ── Step 7: Preservation Actions ──
 	preservationOptions := getDynamicPreservationActions(crop.Name, riskLevel, weather, bestMarket.TransitTimeHr)
@@ -272,9 +275,7 @@ func handleRecommendation(c *gin.Context) {
 		MarketScore:       math.Round(bestMarket.MarketScore*100) / 100,
 		ConfidenceBandMin: confidenceMin,
 		ConfidenceBandMax: confidenceMax,
-		Why:               why,
-		WhyHi:             whyHi,
-		WhyMr:             whyMr,
+		Why:               whyLocalized,
 		Weather:           weather,
 		Soil:              soil,
 		Markets:           marketOptions,
@@ -1022,21 +1023,28 @@ func getDynamicPreservationActions(cropName string, riskLevel string, weather We
 //  LOCALIZED EXPLAINABILITY STRINGS (SLM)
 // ══════════════════════════════════════════════
 
-func generateLocalizedStrings(whyEn, action, cropName, marketName string) (string, string) {
-	apiKey := os.Getenv("GEMINI_API_KEY")
-	if apiKey == "" || apiKey == "your_api_key_here" {
-		log.Println("WARNING: GEMINI_API_KEY not found. Using fallback translations.")
-		return fallbackTranslations(action, cropName, marketName)
+func generateLocalizedStrings(whyEn, action, cropName, marketName, langCode string) string {
+	if langCode == "en" {
+		return whyEn
 	}
 
-	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" || apiKey == "your_api_key_here" {
+		log.Println("WARNING: GEMINI_API_KEY not found. Using fallback translation.")
+		return whyEn
+	}
 
-	prompt := fmt.Sprintf("You are an empathetic agricultural advisor for Indian farmers.\n"+
-		"Translate the following English recommendation into simple, conversational Hindi and Marathi suitable for a farmer.\n\n"+
+	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey
+
+	prompt := fmt.Sprintf("You are a professional translator for an Indian agricultural app.\n"+
+		"Translate the following English recommendation into the language represented by this ISO code: '%s'.\n\n"+
 		"Action: %s\nCrop: %s\nMarket: %s\n"+
-		"English Recommendation:\n%s\n\n"+
-		"Return ONLY a valid JSON object with keys \"why_hi\" and \"why_mr\" containing the respective translations. "+
-		"Do not include markdown formatting like ```json or anything else.", action, cropName, marketName, whyEn)
+		"English Text to Translate:\n%s\n\n"+
+		"CRITICAL INSTRUCTIONS:\n"+
+		"1. You MUST translate the ENTIRE text into the exact regional language for ISO code '%s' (e.g. if 'gu', output ONLY Gujarati).\n"+
+		"2. Do NOT leave any English words. Translate terms like 'Market Score', 'Transit', and 'Spoilage' into the target language.\n"+
+		"3. Maintain the numbered list formatting (1., 2., 3.).\n"+
+		"4. Respond with ONLY the translated text. No markdown, no introductions, no JSON.", langCode, action, cropName, marketName, whyEn, langCode)
 
 	reqBody := map[string]interface{}{
 		"contents": []map[string]interface{}{
@@ -1053,14 +1061,23 @@ func generateLocalizedStrings(whyEn, action, cropName, marketName string) (strin
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return fallbackTranslations(action, cropName, marketName)
+		return whyEn
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil || resp.StatusCode != http.StatusOK {
-		log.Printf("SLM API failed: err %v", err)
-		return fallbackTranslations(action, cropName, marketName)
+		var bodyStr string
+		if resp != nil && resp.Body != nil {
+			b, _ := io.ReadAll(resp.Body)
+			bodyStr = string(b)
+		}
+		status := 0
+		if resp != nil {
+			status = resp.StatusCode
+		}
+		log.Printf("SLM API failed: err %v, status: %d, body: %s", err, status, bodyStr)
+		return whyEn
 	}
 	defer resp.Body.Close()
 
@@ -1077,26 +1094,12 @@ func generateLocalizedStrings(whyEn, action, cropName, marketName string) (strin
 	if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
 		if len(result.Candidates) > 0 && len(result.Candidates[0].Content.Parts) > 0 {
 			responseText := result.Candidates[0].Content.Parts[0].Text
-			responseText = strings.TrimPrefix(responseText, "```json")
-			responseText = strings.TrimPrefix(responseText, "```")
-			responseText = strings.TrimSuffix(responseText, "```")
 			responseText = strings.TrimSpace(responseText)
-
-			var parsedData struct {
-				WhyHi string `json:"why_hi"`
-				WhyMr string `json:"why_mr"`
-			}
-			if err := json.Unmarshal([]byte(responseText), &parsedData); err == nil {
-				if parsedData.WhyHi != "" && parsedData.WhyMr != "" {
-					return parsedData.WhyHi, parsedData.WhyMr
-				}
-			} else {
-				log.Printf("SLM JSON parse failed: %v\nRaw text: %s", err, responseText)
-			}
+			return responseText
 		}
 	}
 
-	return fallbackTranslations(action, cropName, marketName)
+	return whyEn
 }
 
 func fallbackTranslations(action, cropName, marketName string) (string, string) {
@@ -1108,4 +1111,93 @@ func fallbackTranslations(action, cropName, marketName string) (string, string) 
 	hi := fmt.Sprintf("कीमतें स्थिर हैं। %s की कटाई करें और %s में बेचें।", cropName, marketName)
 	mr := fmt.Sprintf("किमती स्थिर आहेत. %s पीक काढा आणि %s मध्ये विका.", cropName, marketName)
 	return hi, mr
+}
+
+// ══════════════════════════════════════════════
+//  CHAT / ASSISTANT HANDLER (Phase 2)
+// ══════════════════════════════════════════════
+
+func handleChat(c *gin.Context) {
+	var req ChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload format"})
+		return
+	}
+
+	if req.FarmerID == "" || req.CropID == "" || req.QueryText == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "farmer_id, crop_id, and query_text are required"})
+		return
+	}
+
+	farmer := fetchFarmer(req.FarmerID)
+	crop := fetchCrop(req.CropID)
+
+	langCode := req.Lang
+	if langCode == "" {
+		langCode = "en"
+	}
+
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" || apiKey == "your_api_key_here" {
+		c.JSON(http.StatusOK, ChatResponse{Reply: "Error: AI not configured."})
+		return
+	}
+
+	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey
+
+	prompt := fmt.Sprintf("You are an agricultural advisor for a farmer.\n"+
+		"Farmer's Crop: %s\n"+
+		"Location Lat/Lon: %.4f, %.4f\n\n"+
+		"The farmer asks: \"%s\"\n\n"+
+		"Use the context of their crop and role to answer efficiently in under 3 sentences.\n"+
+		"CRITICAL: Answer EXCLUSIVELY in the language represented by this ISO code: '%s'. Do NOT leave any English words un-translated. Respond with ONLY the exact translated paragraph. No markdown, no URLs, no JSON.",
+		crop.Name, farmer.LocationLat, farmer.LocationLon, req.QueryText, langCode)
+
+	reqBody := map[string]interface{}{
+		"contents": []map[string]interface{}{
+			{
+				"parts": []map[string]string{
+					{"text": prompt},
+				},
+			},
+		},
+		"generationConfig": map[string]interface{}{
+			"temperature": 0.4,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to build AI request"})
+		return
+	}
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil || resp.StatusCode != http.StatusOK {
+		log.Printf("Chat SLM API failed: err %v", err)
+		c.JSON(http.StatusOK, ChatResponse{Reply: "I'm sorry, I cannot process your request right now."})
+		return
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
+		if len(result.Candidates) > 0 && len(result.Candidates[0].Content.Parts) > 0 {
+			responseText := strings.TrimSpace(result.Candidates[0].Content.Parts[0].Text)
+			c.JSON(http.StatusOK, ChatResponse{Reply: responseText})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, ChatResponse{Reply: "I couldn't generate a response."})
 }

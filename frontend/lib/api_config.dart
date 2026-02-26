@@ -8,7 +8,7 @@ class ApiConfig {
   static const bool useUsb = false;
 
   // Your laptop's LAN IP (run `ip addr` or `ifconfig` to find it)
-  static const String lanIp = '10.0.2.2';
+  static const String lanIp = '10.74.231.180';
 
   // Localhost via `adb reverse tcp:8080 tcp:8080`
   static const String usbIp = '127.0.0.1';
@@ -20,7 +20,7 @@ class ApiConfig {
 
   /// The resolved base URL depending on the connection mode.
   static String get baseUrl {
-    final ip = useUsb ? usbIp : lanIp;
-    return 'http://$ip:$port';
+    // Android emulator special IP to hit host machine's localhost:8080
+    return 'http://$emulatorIp:$port';
   }
 }

@@ -14,12 +14,10 @@ class Recommendation {
   final double confidenceBandMin;
   final double confidenceBandMax;
   final String why;
-  final String whyHi;
-  final String whyMr;
   final WeatherInfo weather;
   final SoilHealth soilHealth;
-  final List<MarketOption> markets;
-  final StorageOption? storage;
+  final List<MarketOption> alternativeMarkets;
+  final StorageOption? storageOptions;
   final List<PreservationAction> preservationActions;
   final DateTime generatedAt;
   bool isOffline;
@@ -34,12 +32,10 @@ class Recommendation {
     required this.confidenceBandMin,
     required this.confidenceBandMax,
     required this.why,
-    this.whyHi = '',
-    this.whyMr = '',
     required this.weather,
     required this.soilHealth,
-    required this.markets,
-    this.storage,
+    required this.alternativeMarkets,
+    this.storageOptions,
     this.preservationActions = const [],
     required this.generatedAt,
     this.isOffline = false,
@@ -56,15 +52,13 @@ class Recommendation {
       confidenceBandMin: (json['confidence_band_min'] ?? 0).toDouble(),
       confidenceBandMax: (json['confidence_band_max'] ?? 0).toDouble(),
       why: json['why'] ?? '',
-      whyHi: json['why_hi'] ?? '',
-      whyMr: json['why_mr'] ?? '',
       weather: WeatherInfo.fromJson(json['weather'] ?? {}),
       soilHealth: SoilHealth.fromJson(json['soil_health'] ?? {}),
-      markets: (json['markets'] as List<dynamic>?)
+      alternativeMarkets: (json['markets'] as List<dynamic>?)
               ?.map((m) => MarketOption.fromJson(m))
               .toList() ??
           [],
-      storage: json['storage'] != null
+      storageOptions: json['storage'] != null
           ? StorageOption.fromJson(json['storage'])
           : null,
       preservationActions: (json['preservation_actions'] as List<dynamic>?)
@@ -74,18 +68,6 @@ class Recommendation {
       generatedAt: DateTime.tryParse(json['generated_at'] ?? '') ?? DateTime.now(),
       isOffline: json['is_offline'] ?? false,
     );
-  }
-
-  /// Get the explainability string for the given language code.
-  String getWhyForLang(String lang) {
-    switch (lang) {
-      case 'hi':
-        return whyHi.isNotEmpty ? whyHi : why;
-      case 'mr':
-        return whyMr.isNotEmpty ? whyMr : why;
-      default:
-        return why;
-    }
   }
 
   bool get isStoreAction => action.toLowerCase().contains('store');
@@ -237,9 +219,10 @@ class ApiService {
     required String cropId,
     double? lat,
     double? lon,
+    String lang = 'en',
   }) async {
     var urlStr =
-        '$_baseUrl/api/v1/recommendation?farmer_id=$farmerId&crop_id=$cropId';
+        '$_baseUrl/api/v1/recommendation?farmer_id=$farmerId&crop_id=$cropId&lang=$lang';
     if (lat != null && lon != null) {
       urlStr += '&lat=${lat.toStringAsFixed(6)}&lon=${lon.toStringAsFixed(6)}';
     }
@@ -304,7 +287,7 @@ class ApiService {
         potassium: 30.0,
         status: 'Low Moisture - Irrigate Soon',
       ),
-      markets: [
+      alternativeMarkets: [
         MarketOption(
           marketName: 'Azadpur Mandi',
           currentPrice: 2500,
@@ -323,23 +306,23 @@ class ApiService {
           transitTimeHr: 0.5,
           spoilageLoss: 1.1,
           netProfitEstimate: 2200.0,
-          marketScore: 2435.65,
-          arrivalVolumeTrend: 'LOW',
-          priceTrendPct: 12.4,
+          marketScore: 2150.0,
+          arrivalVolumeTrend: 'NORMAL',
+          priceTrendPct: 0.5,
         ),
         MarketOption(
-          marketName: 'Vashi APMC',
-          currentPrice: 2800,
-          distanceKm: 1450.0,
-          transitTimeHr: 18.2,
-          spoilageLoss: 12.3,
-          netProfitEstimate: 2100.0,
-          marketScore: 1545.60,
-          arrivalVolumeTrend: 'NORMAL',
+          marketName: 'Narela Mandi',
+          currentPrice: 2400,
+          distanceKm: 28.0,
+          transitTimeHr: 0.7,
+          spoilageLoss: 1.3,
+          netProfitEstimate: 2250.0,
+          marketScore: 2180.5,
+          arrivalVolumeTrend: 'LOW',
           priceTrendPct: 2.1,
         ),
       ],
-      storage: StorageOption(
+      storageOptions: StorageOption(
         name: 'Narela Cold Storage',
         distanceKm: 28.5,
         pricePerKg: 2.0,
@@ -367,5 +350,35 @@ class ApiService {
       ],
       generatedAt: DateTime.now(),
     );
+  }
+
+  /// Sends a collected voice query to the Backend LLM context endpoint.
+  static Future<String> sendVoiceQuery({
+    required String farmerId,
+    required String cropId,
+    required String queryText,
+    String lang = 'en',
+  }) async {
+    final url = Uri.parse('$_baseUrl/api/v1/chat');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'farmer_id': farmerId,
+          'crop_id': cropId,
+          'query_text': queryText,
+          'lang': lang,
+        }),
+      ).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['reply'] ?? 'No reply received.';
+      }
+      return 'Error connecting to AI (code: ${response.statusCode}).';
+    } catch (e) {
+      return 'Could not reach the AI assistant. Check your connection.';
+    }
   }
 }
