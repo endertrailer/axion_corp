@@ -1,7 +1,11 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -99,5 +103,78 @@ func ingestWeatherGrid(db *sqlx.DB) {
 	)
 	if err != nil {
 		log.Printf("[worker] Weather ingestion failed: %v", err)
+	}
+}
+
+// ── Shared Weather Fetcher for Cron ────────────────────
+
+func fetchWeather(lat, lon, idealTemp float64) WeatherInfo {
+	url := fmt.Sprintf(
+		"https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current_weather=true&hourly=relative_humidity_2m",
+		lat, lon,
+	)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
+	if err == nil && resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr == nil {
+			var result struct {
+				CurrentWeather struct {
+					Temperature float64 `json:"temperature"`
+					WeatherCode int     `json:"weathercode"`
+				} `json:"current_weather"`
+				Hourly struct {
+					Humidity []float64 `json:"relative_humidity_2m"`
+				} `json:"hourly"`
+			}
+			if json.Unmarshal(body, &result) == nil {
+				humidity := 60.0
+				if len(result.Hourly.Humidity) > 0 {
+					humidity = result.Hourly.Humidity[0]
+				}
+				condition := weatherCodeToCondition(result.CurrentWeather.WeatherCode)
+				return WeatherInfo{
+					CurrentTemp: result.CurrentWeather.Temperature,
+					Humidity:    humidity,
+					TempDelta:   result.CurrentWeather.Temperature - idealTemp,
+					Condition:   condition,
+				}
+			}
+		}
+	}
+
+	log.Printf("⚠ Open-Meteo API failed – using fallback weather data")
+	return WeatherInfo{
+		CurrentTemp: 32.4,
+		Humidity:    68.0,
+		TempDelta:   32.4 - idealTemp,
+		Condition:   "Partly Cloudy",
+	}
+}
+
+func weatherCodeToCondition(code int) string {
+	switch {
+	case code == 0:
+		return "Clear Sky"
+	case code <= 3:
+		return "Partly Cloudy"
+	case code <= 48:
+		return "Foggy"
+	case code <= 57:
+		return "Drizzle"
+	case code <= 67:
+		return "Rain"
+	case code <= 77:
+		return "Snow"
+	case code <= 82:
+		return "Rain Showers"
+	case code <= 86:
+		return "Snow Showers"
+	case code <= 99:
+		return "Thunderstorm"
+	default:
+		return "Unknown"
 	}
 }

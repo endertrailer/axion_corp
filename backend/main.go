@@ -89,7 +89,7 @@ func handleRecommendation(c *gin.Context) {
 	}
 	log.Printf("📍 Using location: lat=%.4f, lon=%.4f", farmer.LocationLat, farmer.LocationLon)
 
-	// ── Step 2: Concurrent external data fetches ──
+	// ── Step 2: PostgreSQL / PostGIS Cached Fetches ──
 	var wg sync.WaitGroup
 	var weather WeatherInfo
 	var markets []MandiPrice
@@ -98,12 +98,11 @@ func handleRecommendation(c *gin.Context) {
 	wg.Add(3)
 	go func() {
 		defer wg.Done()
-		weather = fetchWeather(farmer.LocationLat, farmer.LocationLon, crop.IdealTemp)
+		weather = fetchWeatherFromDB(farmer.LocationLat, farmer.LocationLon, crop.IdealTemp)
 	}()
 	go func() {
 		defer wg.Done()
-		apiKey := os.Getenv("DATA_GOV_API_KEY")
-		markets = fetchMarketPrices(cropID, crop.Name, apiKey)
+		markets = fetchMarketPricesFromDB(cropID, crop.Name, farmer.LocationLat, farmer.LocationLon)
 	}()
 	go func() {
 		defer wg.Done()
@@ -303,76 +302,36 @@ func fetchCrop(id string) Crop {
 	}
 }
 
-// ── Weather (Open-Meteo) ────────────────────
+// ── Weather (Database Cache) ────────────────
 
-func fetchWeather(lat, lon, idealTemp float64) WeatherInfo {
-	url := fmt.Sprintf(
-		"https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current_weather=true&hourly=relative_humidity_2m",
-		lat, lon,
-	)
-
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(url)
-	if err == nil && resp.StatusCode == http.StatusOK {
-		defer resp.Body.Close()
-		body, readErr := io.ReadAll(resp.Body)
-		if readErr == nil {
-			var result struct {
-				CurrentWeather struct {
-					Temperature float64 `json:"temperature"`
-					WeatherCode int     `json:"weathercode"`
-				} `json:"current_weather"`
-				Hourly struct {
-					Humidity []float64 `json:"relative_humidity_2m"`
-				} `json:"hourly"`
-			}
-			if json.Unmarshal(body, &result) == nil {
-				humidity := 60.0
-				if len(result.Hourly.Humidity) > 0 {
-					humidity = result.Hourly.Humidity[0]
-				}
-				condition := weatherCodeToCondition(result.CurrentWeather.WeatherCode)
-				return WeatherInfo{
-					CurrentTemp: result.CurrentWeather.Temperature,
-					Humidity:    humidity,
-					TempDelta:   result.CurrentWeather.Temperature - idealTemp,
-					Condition:   condition,
-				}
+func fetchWeatherFromDB(lat, lon, idealTemp float64) WeatherInfo {
+	if db != nil {
+		var w struct {
+			Temp     float64 `db:"temp"`
+			Humidity float64 `db:"humidity"`
+		}
+		err := db.Get(&w, `
+			SELECT temp, humidity 
+			FROM weather_cache 
+			ORDER BY location <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography 
+			LIMIT 1`, lon, lat)
+		if err == nil {
+			return WeatherInfo{
+				CurrentTemp: w.Temp,
+				Humidity:    w.Humidity,
+				TempDelta:   w.Temp - idealTemp,
+				Condition:   "Clear Sky", // Static for now
 			}
 		}
+		log.Printf("⚠ DB fetch weather failed: %v", err)
 	}
 
-	log.Printf("⚠ Open-Meteo API failed – using fallback weather data")
+	// Mock fallback
 	return WeatherInfo{
 		CurrentTemp: 32.4,
 		Humidity:    68.0,
 		TempDelta:   32.4 - idealTemp,
 		Condition:   "Partly Cloudy",
-	}
-}
-
-func weatherCodeToCondition(code int) string {
-	switch {
-	case code == 0:
-		return "Clear Sky"
-	case code <= 3:
-		return "Partly Cloudy"
-	case code <= 48:
-		return "Foggy"
-	case code <= 57:
-		return "Drizzle"
-	case code <= 67:
-		return "Rain"
-	case code <= 77:
-		return "Snow"
-	case code <= 82:
-		return "Rain Showers"
-	case code <= 86:
-		return "Snow Showers"
-	case code <= 99:
-		return "Thunderstorm"
-	default:
-		return "Unknown"
 	}
 }
 
@@ -468,51 +427,48 @@ func calculateVolumeTrend(data []HistoricalDataPoint) string {
 	return "NORMAL"
 }
 
-// ── Market Prices (Mandi) ───────────────────
+// ── Market Prices (PostGIS Cache) ─────────────
 
-func fetchMarketPrices(cropID string, cropName string, apiKey string) []MandiPrice {
-	// Try database first
+func fetchMarketPricesFromDB(cropID string, cropName string, lat, lon float64) []MandiPrice {
 	if db != nil {
-		var prices []MandiPrice
-		err := db.Select(&prices,
-			"SELECT id, market_name, crop_id, current_price, market_lat, market_lon, arrival_volume_trend, timestamp FROM mandi_prices WHERE crop_id = $1 ORDER BY timestamp DESC LIMIT 10",
-			cropID,
-		)
-		if err == nil && len(prices) > 0 {
-			return prices
+		type result struct {
+			MarketName string    `db:"market_name"`
+			Price      float64   `db:"price"`
+			Lat        float64   `db:"lat"`
+			Lon        float64   `db:"lon"`
+			RecordedAt time.Time `db:"recorded_at"`
 		}
-		log.Printf("⚠ DB fetch mandi prices failed: %v – trying live API", err)
-	}
+		var rows []result
+		err := db.Select(&rows, `
+			SELECT m.name as market_name, dp.price, ST_Y(m.location::geometry) as lat, ST_X(m.location::geometry) as lon, dp.recorded_at
+			FROM mandis m
+			JOIN daily_prices dp ON dp.mandi_id = m.id
+			WHERE dp.crop_name = $1
+			ORDER BY m.location <-> ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography
+			LIMIT 10`, cropName, lat, lon)
 
-	// Try live data.gov.in API
-	if apiKey != "" && apiKey != "your_api_key_here" {
-		livePrices, err := fetchLiveMandiPrices(apiKey, cropName)
-		if err == nil && len(livePrices) > 0 {
-			// Convert live prices into MandiPrice structs
-			now := time.Now()
-			var result []MandiPrice
-			for i, lp := range livePrices {
-				lat, lon := getCoordinatesForMarket(lp.Market, lp.State)
-				histData := simulateHistoricalData(lp.ModalPrice, lp.Market)
-				result = append(result, MandiPrice{
-					ID:                 fmt.Sprintf("live-%d", i+1),
-					MarketName:         lp.Market,
+		if err == nil && len(rows) > 0 {
+			var prices []MandiPrice
+			for i, r := range rows {
+				histData := simulateHistoricalData(r.Price, r.MarketName)
+				prices = append(prices, MandiPrice{
+					ID:                 fmt.Sprintf("db-%d", i+1),
+					MarketName:         r.MarketName,
 					CropID:             cropID,
-					CurrentPrice:       lp.ModalPrice, // already per quintal
-					MarketLat:          lat,
-					MarketLon:          lon,
+					CurrentPrice:       r.Price,
+					MarketLat:          r.Lat,
+					MarketLon:          r.Lon,
 					ArrivalVolumeTrend: calculateVolumeTrend(histData),
 					PriceTrendPct:      math.Round(forecastPriceTrend(histData)*100) / 100,
-					Timestamp:          now,
+					Timestamp:          r.RecordedAt,
 				})
 			}
-			log.Printf("✅ Fetched %d live mandi prices from data.gov.in", len(result))
-			return result
+			return prices
 		}
-		log.Printf("Live API failed, falling back to mock data: %v", err)
+		log.Printf("⚠ DB fetch mandi prices failed: %v", err)
 	}
 
-	// FALLBACK: realistic market data with volume trends
+	// FALLBACK
 	now := time.Now()
 	m1Hist := simulateHistoricalData(2500, "Azadpur Mandi")
 	m2Hist := simulateHistoricalData(2800, "Vashi APMC")
