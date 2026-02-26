@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 import 'l10n/translations.dart';
 
@@ -48,19 +49,155 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _locationStatus = 'Detecting location…';
   bool _locationDenied = false;
 
-  // Language state — default English
+  // Language state
   String _lang = 'en';
+  bool _langInitDone = false;
 
   final String _farmerId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
   final String _cropId = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
 
-  /// Shorthand for translation lookups.
   String _t(String key) => AppTranslations.t(key, _lang);
 
   @override
   void initState() {
     super.initState();
-    _initLocationThenFetch();
+    _loadLanguagePreference();
+  }
+
+  /// Loads saved language or shows first-launch picker.
+  Future<void> _loadLanguagePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('app_language');
+
+    if (saved != null) {
+      setState(() {
+        _lang = saved;
+        _langInitDone = true;
+      });
+      _initLocationThenFetch();
+    } else {
+      // First launch — show language picker after the frame renders
+      setState(() => _langInitDone = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showLanguagePickerDialog(firstLaunch: true);
+      });
+    }
+  }
+
+  /// Persists the language choice.
+  Future<void> _saveLanguage(String code) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_language', code);
+  }
+
+  // ─── LANGUAGE PICKER DIALOG ───────────────────
+
+  void _showLanguagePickerDialog({bool firstLaunch = false}) {
+    showDialog(
+      context: context,
+      barrierDismissible: !firstLaunch,
+      builder: (ctx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF2E7D32),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.language, color: Colors.white, size: 36),
+                    const SizedBox(height: 8),
+                    Text(
+                      firstLaunch ? 'Welcome to AgriChain' : AppTranslations.t('select_language', _lang),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      AppTranslations.t('choose_your_language', _lang),
+                      style: const TextStyle(fontSize: 13, color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Language grid
+              SizedBox(
+                height: 400,
+                child: GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 2.6,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemCount: supportedLanguages.length,
+                  itemBuilder: (context, index) {
+                    final lang = supportedLanguages[index];
+                    final isSelected = lang.code == _lang;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () {
+                        setState(() => _lang = lang.code);
+                        _saveLanguage(lang.code);
+                        Navigator.of(ctx).pop();
+                        if (firstLaunch) _initLocationThenFetch();
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF2E7D32).withAlpha(30)
+                              : Colors.grey.withAlpha(20),
+                          borderRadius: BorderRadius.circular(10),
+                          border: isSelected
+                              ? Border.all(color: const Color(0xFF2E7D32), width: 2)
+                              : Border.all(color: Colors.grey.withAlpha(60)),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              lang.nativeName,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                color: isSelected ? const Color(0xFF2E7D32) : Colors.black87,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              lang.englishName,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isSelected ? const Color(0xFF2E7D32) : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   // ─── LOCATION DETECTION ───────────────────────
@@ -115,9 +252,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _locationDenied = false;
         });
       } else {
-        setState(() {
-          _locationStatus = 'Getting GPS fix…';
-        });
+        setState(() => _locationStatus = 'Getting GPS fix…');
         pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.low,
@@ -166,8 +301,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // ─── BUILD ────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    // Find current language name for the AppBar button
+    final currentLangInfo = supportedLanguages.firstWhere(
+      (l) => l.code == _lang,
+      orElse: () => supportedLanguages[0],
+    );
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F8E9),
       appBar: AppBar(
@@ -180,32 +323,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          // ── Language Toggle ──
-          Container(
-            margin: const EdgeInsets.only(right: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(40),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _lang,
-                icon: const Icon(Icons.language, color: Colors.white, size: 18),
-                dropdownColor: const Color(0xFF2E7D32),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'en', child: Text('EN')),
-                  DropdownMenuItem(value: 'hi', child: Text('हिं')),
-                  DropdownMenuItem(value: 'mr', child: Text('मरा')),
+          // Language switch button
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => _showLanguagePickerDialog(),
+            child: Container(
+              margin: const EdgeInsets.only(right: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(40),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.language, size: 16, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text(
+                    currentLangInfo.nativeName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
-                onChanged: (val) {
-                  if (val != null) setState(() => _lang = val);
-                },
               ),
             ),
           ),
@@ -221,6 +363,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildBody() {
+    if (!_langInitDone) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)));
+    }
+
     if (_loading) {
       return Center(
         child: Column(
@@ -319,8 +465,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Text(
                 'Enable',
                 style: TextStyle(
-                  fontSize: 13,
-                  color: color,
+                  fontSize: 13, color: color,
                   fontWeight: FontWeight.bold,
                   decoration: TextDecoration.underline,
                 ),
@@ -340,7 +485,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     Color actionColor;
     IconData actionIcon;
-
     if (isStore) {
       actionColor = const Color(0xFFF57F17);
       actionIcon = Icons.warehouse;
@@ -352,10 +496,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       actionIcon = Icons.hourglass_top;
     }
 
-    // Localized action text
     final localizedAction = AppTranslations.translateAction(rec.action, _lang);
-
-    // Localized explainability string
     final localizedWhy = rec.getWhyForLang(_lang);
     final reasons = _parseReasons(localizedWhy);
 
@@ -378,9 +519,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text(
                   localizedAction,
                   style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -393,7 +532,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-
           Container(
             color: actionColor.withAlpha(25),
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
@@ -404,16 +542,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 6),
                 Text(
                   '${_t('market_score')}: ${rec.marketScore.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: actionColor,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: actionColor),
                 ),
               ],
             ),
           ),
-
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
@@ -422,11 +555,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               leading: Icon(Icons.lightbulb_outline, color: actionColor),
               title: Text(
                 _t('why_suggesting'),
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                  color: actionColor,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: actionColor),
               ),
               children: reasons.map((reason) {
                 return Padding(
@@ -436,10 +565,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       const Text('• ', style: TextStyle(fontSize: 14, height: 1.5)),
                       Expanded(
-                        child: Text(
-                          reason,
-                          style: const TextStyle(fontSize: 14, height: 1.5),
-                        ),
+                        child: Text(reason, style: const TextStyle(fontSize: 14, height: 1.5)),
                       ),
                     ],
                   ),
@@ -475,9 +601,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Icon(Icons.trending_up, color: bandColor),
                 const SizedBox(width: 8),
-                Text(
-                  _t('expected_market_range'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    _t('expected_market_range'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
@@ -485,60 +613,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    bandColor.withAlpha(30),
-                    bandColor.withAlpha(60),
-                    bandColor.withAlpha(30),
-                  ],
-                ),
+                gradient: LinearGradient(colors: [
+                  bandColor.withAlpha(30), bandColor.withAlpha(60), bandColor.withAlpha(30),
+                ]),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: bandColor.withAlpha(100)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    children: [
-                      Text(
-                        '₹${rec.confidenceBandMin.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: bandColor,
-                        ),
-                      ),
-                      Text(
-                        _t('low'),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Icon(Icons.swap_horiz, color: bandColor, size: 28),
-                      Text(
-                        '±10%',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Text(
-                        '₹${rec.confidenceBandMax.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: bandColor,
-                        ),
-                      ),
-                      Text(
-                        _t('high'),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
+                  Column(children: [
+                    Text('₹${rec.confidenceBandMin.toStringAsFixed(0)}',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: bandColor)),
+                    Text(_t('low'), style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ]),
+                  Column(children: [
+                    Icon(Icons.swap_horiz, color: bandColor, size: 28),
+                    Text('±10%', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                  ]),
+                  Column(children: [
+                    Text('₹${rec.confidenceBandMax.toStringAsFixed(0)}',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: bandColor)),
+                    Text(_t('high'), style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ]),
                 ],
               ),
             ),
@@ -550,18 +647,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: const Color(0xFFFFF3E0),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber, color: Color(0xFFF57F17), size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _t('oversupply_warning'),
-                        style: const TextStyle(fontSize: 12, color: Color(0xFFE65100)),
-                      ),
-                    ),
-                  ],
-                ),
+                child: Row(children: [
+                  const Icon(Icons.warning_amber, color: Color(0xFFF57F17), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(_t('oversupply_warning'),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFFE65100))),
+                  ),
+                ]),
               ),
             ],
           ],
@@ -582,16 +675,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.warehouse, color: Color(0xFFF57F17)),
-                const SizedBox(width: 8),
-                Text(
-                  _t('recommended_storage'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
+            Row(children: [
+              const Icon(Icons.warehouse, color: Color(0xFFF57F17)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(_t('recommended_storage'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ]),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
@@ -603,33 +694,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    storage.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFF57F17),
-                    ),
-                  ),
+                  Text(storage.name,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFF57F17))),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _storageStat(
-                        '${storage.distanceKm.toStringAsFixed(1)} km',
-                        _t('distance'),
-                        Icons.near_me,
-                      ),
-                      _storageStat(
-                        '₹${storage.pricePerKg.toStringAsFixed(1)}/kg',
-                        _t('per_day'),
-                        Icons.payments,
-                      ),
-                      _storageStat(
-                        '${storage.capacityMT.toStringAsFixed(0)} MT',
-                        _t('capacity'),
-                        Icons.inventory_2,
-                      ),
+                      _storageStat('${storage.distanceKm.toStringAsFixed(1)} km', _t('distance'), Icons.near_me),
+                      _storageStat('₹${storage.pricePerKg.toStringAsFixed(1)}/kg', _t('per_day'), Icons.payments),
+                      _storageStat('${storage.capacityMT.toStringAsFixed(0)} MT', _t('capacity'), Icons.inventory_2),
                     ],
                   ),
                 ],
@@ -642,20 +715,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _storageStat(String value, String label, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: const Color(0xFFF57F17), size: 22),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Colors.grey),
-        ),
-      ],
-    );
+    return Column(children: [
+      Icon(icon, color: const Color(0xFFF57F17), size: 22),
+      const SizedBox(height: 4),
+      Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+      Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+    ]);
   }
 
   // ─── WEATHER CARD ─────────────────────────────
@@ -669,35 +734,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.wb_sunny, color: Color(0xFFFFA000)),
-                const SizedBox(width: 8),
-                Text(
-                  _t('weather_conditions'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
+            Row(children: [
+              const Icon(Icons.wb_sunny, color: Color(0xFFFFA000)),
+              const SizedBox(width: 8),
+              Text(_t('weather_conditions'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ]),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _weatherStat(
-                  '${weather.currentTemp.toStringAsFixed(1)}°C',
-                  _t('temperature'),
-                  Icons.thermostat,
-                ),
-                _weatherStat(
-                  '${weather.humidity.toStringAsFixed(0)}%',
-                  _t('humidity'),
-                  Icons.water_drop,
-                ),
-                _weatherStat(
-                  weather.condition,
-                  _t('condition'),
-                  Icons.cloud,
-                ),
+                _weatherStat('${weather.currentTemp.toStringAsFixed(1)}°C', _t('temperature'), Icons.thermostat),
+                _weatherStat('${weather.humidity.toStringAsFixed(0)}%', _t('humidity'), Icons.water_drop),
+                _weatherStat(weather.condition, _t('condition'), Icons.cloud),
               ],
             ),
           ],
@@ -707,20 +756,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _weatherStat(String value, String label, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: const Color(0xFF2E7D32), size: 24),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-      ],
-    );
+    return Column(children: [
+      Icon(icon, color: const Color(0xFF2E7D32), size: 24),
+      const SizedBox(height: 4),
+      Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+    ]);
   }
 
   // ─── MARKETS COMPARISON CARD ──────────────────
@@ -734,16 +775,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.store, color: Color(0xFF2E7D32)),
-                const SizedBox(width: 8),
-                Text(
-                  _t('market_comparison'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
+            Row(children: [
+              const Icon(Icons.store, color: Color(0xFF2E7D32)),
+              const SizedBox(width: 8),
+              Text(_t('market_comparison'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ]),
             const SizedBox(height: 12),
             ...markets.asMap().entries.map((entry) {
               final idx = entry.key;
@@ -756,63 +793,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 decoration: BoxDecoration(
                   color: isBest
                       ? const Color(0xFF2E7D32).withAlpha(25)
-                      : isHigh
-                          ? const Color(0xFFFFF3E0)
-                          : Colors.grey.withAlpha(13),
+                      : isHigh ? const Color(0xFFFFF3E0) : Colors.grey.withAlpha(13),
                   borderRadius: BorderRadius.circular(10),
                   border: isBest
                       ? Border.all(color: const Color(0xFF2E7D32), width: 1.5)
-                      : isHigh
-                          ? Border.all(
-                              color: const Color(0xFFF57F17).withAlpha(120))
-                          : null,
+                      : isHigh ? Border.all(color: const Color(0xFFF57F17).withAlpha(120)) : null,
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              if (isBest) _badge(_t('best'), const Color(0xFF2E7D32)),
-                              if (isHigh)
-                                _badge(_t('high_supply'), const Color(0xFFF57F17)),
-                              if (m.arrivalVolumeTrend == 'LOW')
-                                _badge(_t('low_supply'), const Color(0xFF1565C0)),
-                              Flexible(
-                                child: Text(
-                                  m.marketName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ],
+                child: Row(children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          if (isBest) _badge(_t('best'), const Color(0xFF2E7D32)),
+                          if (isHigh) _badge(_t('high_supply'), const Color(0xFFF57F17)),
+                          if (m.arrivalVolumeTrend == 'LOW') _badge(_t('low_supply'), const Color(0xFF1565C0)),
+                          Flexible(
+                            child: Text(m.marketName,
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '₹${m.currentPrice.toStringAsFixed(0)}/q  •  ${m.transitTimeHr.toStringAsFixed(1)} hr  •  ${m.spoilageLoss.toStringAsFixed(1)}% loss',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ]),
+                        const SizedBox(height: 4),
+                        Text(
+                          '₹${m.currentPrice.toStringAsFixed(0)}/q  •  ${m.transitTimeHr.toStringAsFixed(1)} hr  •  ${m.spoilageLoss.toStringAsFixed(1)}% loss',
+                          style: const TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                      ],
                     ),
-                    Text(
-                      m.marketScore.toStringAsFixed(0),
+                  ),
+                  Text(m.marketScore.toStringAsFixed(0),
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 18, fontWeight: FontWeight.bold,
                         color: isBest ? const Color(0xFF2E7D32) : Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
+                      )),
+                ]),
               );
             }),
           ],
@@ -825,18 +840,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 9,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+      child: Text(text,
+          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
     );
   }
 }
