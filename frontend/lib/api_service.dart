@@ -56,8 +56,8 @@ class Recommendation {
       confidenceBandMin: (json['confidence_band_min'] ?? 0).toDouble(),
       confidenceBandMax: (json['confidence_band_max'] ?? 0).toDouble(),
       why: json['why'] ?? '',
-      whyHi: json['explainability_string_hi'] ?? '',
-      whyMr: json['explainability_string_mr'] ?? '',
+      whyHi: json['why_hi'] ?? '',
+      whyMr: json['why_mr'] ?? '',
       weather: WeatherInfo.fromJson(json['weather'] ?? {}),
       soilHealth: SoilHealth.fromJson(json['soil_health'] ?? {}),
       markets: (json['markets'] as List<dynamic>?)

@@ -31,7 +31,7 @@
 **Objective**: Replace hardcoded if/else rules with true predictive models for historical price forecasting, volume trends, dynamic soil health, and comprehensive spoilage calculations incorporating road quality and crop maturity.
 
 ### Phase 6: SLM Explainability & Audio-First UX
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Implement Small Language Models (SLMs) to generate dynamic, culturally empathetic "Why" strings. Connect to a Text-to-Speech (TTS) API to deliver these outputs as audio directly to the farmer within the Flutter app.
 
 ### Phase 7: Hyper-local Crowdsourcing (WhatsApp Bot)

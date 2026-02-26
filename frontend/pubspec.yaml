@@ -40,6 +40,7 @@ dependencies:
   geocoding: ^4.0.0
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_test:

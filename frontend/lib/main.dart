@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'api_service.dart';
 import 'l10n/translations.dart';
 
@@ -59,12 +60,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final String _farmerId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
   final String _cropId = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
 
+  FlutterTts flutterTts = FlutterTts();
+  bool isSpeaking = false;
+
   String _t(String key) => AppTranslations.t(key, _lang);
 
   @override
   void initState() {
     super.initState();
     _loadLanguagePreference();
+    _initTts();
+  }
+
+  Future<void> _initTts() async {
+    await flutterTts.setVolume(1.0);
+    await flutterTts.setSpeechRate(0.45);
+    await flutterTts.setPitch(1.0);
+    
+    flutterTts.setCompletionHandler(() {
+      setState(() {
+        isSpeaking = false;
+      });
+    });
+  }
+
+  Future<void> _speak(String text) async {
+    if (isSpeaking) {
+      await flutterTts.stop();
+      setState(() => isSpeaking = false);
+      return;
+    }
+
+    String locale = 'en-US';
+    if (_lang == 'hi') locale = 'hi-IN';
+    if (_lang == 'mr') locale = 'mr-IN';
+    
+    await flutterTts.setLanguage(locale);
+    setState(() => isSpeaking = true);
+    await flutterTts.speak(text);
+  }
+
+  @override
+  void dispose() {
+    flutterTts.stop();
+    super.dispose();
   }
 
   /// Loads saved language or shows first-launch picker.
@@ -661,9 +700,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               tilePadding: const EdgeInsets.symmetric(horizontal: 20),
               childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               leading: Icon(Icons.lightbulb_outline, color: actionColor),
-              title: Text(
-                _t('why_suggesting'),
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: actionColor),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _t('why_suggesting'),
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: actionColor),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      isSpeaking ? Icons.stop_circle : Icons.volume_up,
+                      color: actionColor,
+                    ),
+                    onPressed: () => _speak(localizedWhy),
+                    tooltip: 'Listen to recommendation',
+                  ),
+                ],
               ),
               children: reasons.map((reason) {
                 return Padding(
