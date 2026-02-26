@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -29,6 +30,11 @@ var db *sqlx.DB
 // ──────────────────────────────────────────────
 
 func main() {
+	// Load .env file for API keys
+	if err := godotenv.Load(); err != nil {
+		log.Printf("INFO: No .env file found, relying on system environment variables")
+	}
+
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		dsn = "postgres://postgres:postgres@localhost:5432/agrichain?sslmode=disable"
@@ -103,7 +109,8 @@ func handleRecommendation(c *gin.Context) {
 	}()
 	go func() {
 		defer wg.Done()
-		markets = fetchMarketPrices(cropID)
+		apiKey := os.Getenv("DATA_GOV_API_KEY")
+		markets = fetchMarketPrices(cropID, crop.Name, apiKey)
 	}()
 	wg.Wait()
 
@@ -342,7 +349,8 @@ func weatherCodeToCondition(code int) string {
 
 // ── Market Prices (Mandi) ───────────────────
 
-func fetchMarketPrices(cropID string) []MandiPrice {
+func fetchMarketPrices(cropID string, cropName string, apiKey string) []MandiPrice {
+	// Try database first
 	if db != nil {
 		var prices []MandiPrice
 		err := db.Select(&prices,
@@ -352,8 +360,34 @@ func fetchMarketPrices(cropID string) []MandiPrice {
 		if err == nil && len(prices) > 0 {
 			return prices
 		}
-		log.Printf("⚠ DB fetch mandi prices failed: %v – using fallback", err)
+		log.Printf("⚠ DB fetch mandi prices failed: %v – trying live API", err)
 	}
+
+	// Try live data.gov.in API
+	if apiKey != "" && apiKey != "your_api_key_here" {
+		livePrices, err := fetchLiveMandiPrices(apiKey, cropName)
+		if err == nil && len(livePrices) > 0 {
+			// Convert live prices into MandiPrice structs
+			now := time.Now()
+			var result []MandiPrice
+			for i, lp := range livePrices {
+				result = append(result, MandiPrice{
+					ID:                 fmt.Sprintf("live-%d", i+1),
+					MarketName:         lp.Market,
+					CropID:             cropID,
+					CurrentPrice:       lp.ModalPrice, // already per quintal
+					MarketLat:          28.6139,       // default Delhi coords; real geocoding TBD
+					MarketLon:          77.2090,
+					ArrivalVolumeTrend: "NORMAL",
+					Timestamp:          now,
+				})
+			}
+			log.Printf("✅ Fetched %d live mandi prices from data.gov.in", len(result))
+			return result
+		}
+		log.Printf("Live API failed, falling back to mock data: %v", err)
+	}
+
 	// FALLBACK: realistic market data with volume trends
 	now := time.Now()
 	return []MandiPrice{
@@ -362,6 +396,69 @@ func fetchMarketPrices(cropID string) []MandiPrice {
 		{ID: "m3", MarketName: "Ghazipur Mandi", CropID: cropID, CurrentPrice: 2350, MarketLat: 28.6233, MarketLon: 77.3230, ArrivalVolumeTrend: "LOW", Timestamp: now},
 		{ID: "m4", MarketName: "Pune APMC", CropID: cropID, CurrentPrice: 2650, MarketLat: 18.5204, MarketLon: 73.8567, ArrivalVolumeTrend: "NORMAL", Timestamp: now},
 	}
+}
+
+// LiveMandiRecord represents a single record from the data.gov.in API.
+type LiveMandiRecord struct {
+	Market     string  `json:"market"`
+	Commodity  string  `json:"commodity"`
+	ModalPrice float64 `json:"modal_price"`
+	State      string  `json:"state"`
+	District   string  `json:"district"`
+}
+
+// fetchLiveMandiPrices fetches live mandi prices from data.gov.in.
+func fetchLiveMandiPrices(apiKey string, cropName string) ([]LiveMandiRecord, error) {
+	url := fmt.Sprintf(
+		"https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=%s&format=json&filters[commodity]=%s&limit=10",
+		apiKey, cropName,
+	)
+
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("data.gov.in request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("data.gov.in returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// The API returns: { "records": [ { "market": "...", "modal_price": "...", ... } ] }
+	var apiResp struct {
+		Records []struct {
+			Market     string `json:"market"`
+			Commodity  string `json:"commodity"`
+			ModalPrice string `json:"modal_price"`
+			State      string `json:"state"`
+			District   string `json:"district"`
+		} `json:"records"`
+	}
+
+	if err := json.Unmarshal(body, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to parse data.gov.in JSON: %w", err)
+	}
+
+	var records []LiveMandiRecord
+	for _, r := range apiResp.Records {
+		modalPrice, _ := strconv.ParseFloat(r.ModalPrice, 64)
+		// modal_price is per Quintal (100kg), divide by 100 for price_per_kg
+		records = append(records, LiveMandiRecord{
+			Market:     r.Market,
+			Commodity:  r.Commodity,
+			ModalPrice: modalPrice, // keep as per quintal to match our CurrentPrice field
+			State:      r.State,
+			District:   r.District,
+		})
+	}
+
+	return records, nil
 }
 
 // ── Storage Facilities ──────────────────────
