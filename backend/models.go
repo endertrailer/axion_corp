@@ -70,6 +70,15 @@ type WeatherInfo struct {
 	Condition   string  `json:"condition"`
 }
 
+// SoilHealth holds the mock soil indicators for the farmer's region.
+type SoilHealth struct {
+	MoisturePct float64 `json:"moisture_pct"`
+	Nitrogen    float64 `json:"nitrogen"`
+	Phosphorus  float64 `json:"phosphorus"`
+	Potassium   float64 `json:"potassium"`
+	Status      string  `json:"status"`
+}
+
 // StorageOption represents a nearby cold storage recommendation.
 type StorageOption struct {
 	Name       string  `json:"name"`
@@ -96,7 +105,8 @@ type PreservationAction struct {
 type Recommendation struct {
 	FarmerID          string               `json:"farmer_id"`
 	CropName          string               `json:"crop_name"`
-	Action            string               `json:"action"` // "Harvest Now", "Wait", "Sell at Mandi", "Delay & Store Locally"
+	Action            string               `json:"action"` // e.g. "Sell at Mandi", "Delay & Store Locally"
+	HarvestWindow     string               `json:"harvest_window"`
 	RecommendedMarket string               `json:"recommended_market"`
 	MarketScore       float64              `json:"market_score"`
 	ConfidenceBandMin float64              `json:"confidence_band_min"`
@@ -105,6 +115,7 @@ type Recommendation struct {
 	WhyHi             string               `json:"explainability_string_hi"`
 	WhyMr             string               `json:"explainability_string_mr"`
 	Weather           WeatherInfo          `json:"weather"`
+	Soil              SoilHealth           `json:"soil_health"`
 	Markets           []MarketOption       `json:"markets"`
 	Storage           *StorageOption       `json:"storage,omitempty"`
 	Preservation      []PreservationAction `json:"preservation_actions"`
