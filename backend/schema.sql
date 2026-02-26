@@ -2,6 +2,38 @@
 -- PostgreSQL DDL for the farm-to-market intelligence platform.
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+-- ═══════════════════════════════════════════════
+-- ASYNC INGESTION TABLES (PHASE 4)
+-- ═══════════════════════════════════════════════
+
+-- Mandis table
+CREATE TABLE IF NOT EXISTS mandis (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    location GEOGRAPHY(Point, 4326) NOT NULL
+);
+
+-- Daily Prices table
+CREATE TABLE IF NOT EXISTS daily_prices (
+    id SERIAL PRIMARY KEY,
+    mandi_id INTEGER REFERENCES mandis(id),
+    crop_name VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(mandi_id, crop_name, recorded_at)
+);
+
+-- Weather Cache table
+CREATE TABLE IF NOT EXISTS weather_cache (
+    id SERIAL PRIMARY KEY,
+    geohash VARCHAR(20) NOT NULL,
+    temp DECIMAL(5,2) NOT NULL,
+    humidity DECIMAL(5,2) NOT NULL,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(geohash, recorded_at)
+);
 
 -- Farmers table: stores farmer identity and geolocation.
 CREATE TABLE IF NOT EXISTS farmers (
