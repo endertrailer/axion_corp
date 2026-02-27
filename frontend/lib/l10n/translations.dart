@@ -617,10 +617,10 @@ class AppTranslations {
       'ur': 'اپنی زبان منتخب کریں',
     },
     'top_pick': {
-      'en': 'AgriChain Top Pick', 'hi': 'AgriChain की सर्वोत्तम पसंद', 'mr': 'AgriChain सर्वोत्तम निवड',
-      'bn': 'AgriChain সেরা বাছাই', 'ta': 'AgriChain சிறந்த தேர்வு', 'te': 'AgriChain ఉత్తమ ఎంపిక',
-      'gu': 'AgriChain શ્રેષ્ઠ પસંદગી', 'kn': 'AgriChain ಅತ್ಯುತ್ತಮ ಆಯ್ಕೆ', 'ml': 'AgriChain മികച്ച തിരഞ്ഞെടുപ്പ്',
-      'pa': 'AgriChain ਸਭ ਤੋਂ ਵਧੀਆ ਚੋਣ', 'ur': 'AgriChain بہترین انتخاب',
+      'en': 'HarvestWise Top Pick', 'hi': 'HarvestWise की सर्वोत्तम पसंद', 'mr': 'HarvestWise सर्वोत्तम निवड',
+      'bn': 'HarvestWise সেরা বাছাই', 'ta': 'HarvestWise சிறந்த தேர்வு', 'te': 'HarvestWise ఉత్తమ ఎంపిక',
+      'gu': 'HarvestWise શ્રેષ્ઠ પસંદગી', 'kn': 'HarvestWise ಅತ್ಯುತ್ತಮ ಆಯ್ಕೆ', 'ml': 'HarvestWise മികച്ച തിരഞ്ഞെടുപ്പ്',
+      'pa': 'HarvestWise ਸਭ ਤੋਂ ਵਧੀਆ ਚੋਣ', 'ur': 'HarvestWise بہترین انتخاب',
     },
     'change_location': {
       'en': 'Change Location', 'hi': 'स्थान बदलें', 'mr': 'स्थान बदला',
@@ -643,14 +643,15 @@ class AppTranslations {
     },
     'all_markets': {
       'en': 'All Markets', 'hi': 'सभी बाजार', 'mr': 'सर्व बाजार', 'bn': 'সব বাজার', 'ta': 'அனைத்து சந்தைகள்',
-      'te': 'అన్ని మార్కెట్లు', 'gu': 'બધા બજાર', 'kn': 'ಎಲ್ಲಾ ಮಾರುಕಟ್ಟೆ', 'ml': 'എല്ലാ വിപണികളും',
-      'pa': 'ਸਾਰੀਆਂ ਮੰਡੀਆਂ', 'ur': 'تمام منڈیاں',
+      'te': 'అన్ని మార్కెట్లు', 'gu': 'બધા બજાર', 'kn': 'ಎಲ್ಲಾ ಮಾರುಕಟ್ಟೆ', 'ml': 'ಎಲ್ಲಾ ವಿಪണிகளும்',
+      'pa': 'ਸਾਰੀਆਂ ਮੰਡੀਆਂ', 'ur': 'تمام منਡੀਆਂ',
     },
     
     // ── Chatbot UI ──
-    'assistant_title': {
-      'en': 'AgriChain Assistant', 'hi': 'एग्रीचेन असिस्टेंट', 'mr': 'अ‍ॅग्रीचेन असिस्टंट',
-      'bn': 'AgriChain সহকারী', 'ta': 'AgriChain உதவியாளர்', 'te': 'AgriChain అసిస్టెంట్',
+    'assistant_name': {
+      'en': 'HarvestWise Assistant', 'hi': 'HarvestWise असिस्टेंट', 'mr': 'HarvestWise असिस्टंट',
+      'bn': 'HarvestWise সহকারী', 'ta': 'HarvestWise உதவியாளர்', 'te': 'HarvestWise అసిస్టెంట్',
+      'gu': 'HarvestWise સહાયક', 'kn': 'HarvestWise ಸಹાયક', 'ml': 'HarvestWise అసిస్టెంట్',
     },
     'assistant_subtitle': {
       'en': 'Your Digital Advisor', 'hi': 'आपका डिजिटल सलाहकार', 'mr': 'तुमचा डिजिटल सल्लागार',

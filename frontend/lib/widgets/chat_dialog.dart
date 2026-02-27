@@ -221,7 +221,7 @@ class _ChatDialogState extends State<ChatDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'AgriChain Assistant',
+                        'HarvestWise Assistant',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,

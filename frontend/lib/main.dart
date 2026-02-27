@@ -20,7 +20,7 @@ class AgriChainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AgriChain',
+      title: 'HarvestWise',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -160,7 +160,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const Icon(Icons.language, color: Colors.white, size: 36),
                     const SizedBox(height: 8),
                     Text(
-                      firstLaunch ? 'Welcome to AgriChain' : AppTranslations.t('select_language', _lang),
+                      firstLaunch ? 'Welcome to HarvestWise' : AppTranslations.t('select_language', _lang),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -387,7 +387,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
-          'AgriChain',
+          'HarvestWise',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,

@@ -20,7 +20,10 @@ class ApiConfig {
 
   /// The resolved base URL depending on the connection mode.
   static String get baseUrl {
-    // Android emulator special IP to hit host machine's localhost:8080
-    return 'http://$emulatorIp:$port';
+    if (useUsb) {
+      return 'http://$usbIp:$port';
+    }
+    // Using physical device via Hotspot LAN
+    return 'http://$lanIp:$port';
   }
 }
