@@ -307,7 +307,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _position = pos;
           _locationDenied = false;
         });
-        await _updateLocationStatus(pos!);
+        await _updateLocationStatus(pos);
       }
     } catch (e) {
       debugPrint('Location error: $e');

@@ -152,12 +152,13 @@ class _CropPickerScreenState extends State<CropPickerScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                          AppTranslations.t(crop.translationKey, widget.lang),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: crop.themeColor.withOpacity(0.9),
+                            AppTranslations.t(crop.translationKey, widget.lang),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: crop.themeColor.withAlpha(230),
+                            ),
                           ),
                         ),
                       ],

@@ -38,7 +38,7 @@ class _ChatDialogState extends State<ChatDialog> {
   
   bool _isTyping = false;
   bool _isListening = false;
-  stt.SpeechToText _speechToText = stt.SpeechToText();
+  final stt.SpeechToText _speechToText = stt.SpeechToText();
 
   @override
   void initState() {
@@ -55,7 +55,7 @@ class _ChatDialogState extends State<ChatDialog> {
       await Permission.microphone.request();
     }
     await _speechToText.initialize(
-      onError: (val) => print('STT Error: $val'),
+      onError: (val) => debugPrint('STT Error: $val'),
       onStatus: (val) {
         if (val == 'done' || val == 'notListening') {
           if (mounted) setState(() => _isListening = false);
