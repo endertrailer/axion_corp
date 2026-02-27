@@ -377,15 +377,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       orElse: () => supportedLanguages[0],
     );
 
+    // Dynamic UI Theme derived from the current crop
+    final activeCrop = masterCropList.firstWhere(
+      (c) => c.id == _cropId,
+      orElse: () => masterCropList.first,
+    );
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F8E9),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           'AgriChain',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: activeCrop.themeColor,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -396,7 +402,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final selectedId = await Navigator.push<String>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CropPickerScreen(lang: _lang),
+                  builder: (_) => CropPickerScreen(lang: _lang, activeColor: activeCrop.themeColor),
                 ),
               );
               if (selectedId != null && selectedId != _cropId) {
@@ -419,8 +425,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(
                     (() {
-                      final crop = masterCropList.firstWhere((c) => c.id == _cropId, orElse: () => masterCropList.first);
-                      return '${crop.emoji} ${AppTranslations.t(crop.translationKey, _lang)}';
+                      return '${activeCrop.emoji} ${AppTranslations.t(activeCrop.translationKey, _lang)}';
                     })(),
                     style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                   ),
@@ -467,9 +472,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFE8F5E9), Color(0xFFF1F8E9), Colors.white],
+            colors: [activeCrop.themeColor.withAlpha(25), activeCrop.themeColor.withAlpha(10), Colors.white],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -488,7 +493,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: _showLocationPicker,
               icon: const Icon(Icons.edit_location_alt),
               label: Text(_t('change_location') != 'change_location' ? _t('change_location') : 'Change Location'),
-              backgroundColor: const Color(0xFF2E7D32),
+              backgroundColor: activeCrop.themeColor,
               foregroundColor: Colors.white,
             ),
             // Right: Floating AI Mic
@@ -506,11 +511,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       farmerId: _farmerId,
                       cropId: _cropId,
                       flutterTts: flutterTts,
+                      activeColor: activeCrop.themeColor,
                     ),
                   ),
                 );
               },
-              backgroundColor: const Color(0xFF2E7D32),
+              backgroundColor: activeCrop.themeColor,
               child: const Icon(Icons.smart_toy),
             ),
           ],

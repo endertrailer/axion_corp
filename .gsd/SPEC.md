@@ -57,3 +57,7 @@ Farmers and agricultural logistics personnel who are primarily comfortable in th
 - [x] **[Phase 9]** Primary Recommendation Card redesigned with gradients and glassmorphism.
 - [x] **[Phase 9]** ChatDialog UI modernized.
 - [x] **[Phase 9]** Data Cards redesigned for better visual hierarchy.
+
+- [x] **[Phase 10]** Modify `CropItem` struct to accept `Color themeColor`.
+- [x] **[Phase 10]** Assign 31 specific realistic colors to the crop database.
+- [x] **[Phase 10]** Plumb the selected crop color through `main.dart`'s Scaffold, FABs, and Chatbot ActionChips.

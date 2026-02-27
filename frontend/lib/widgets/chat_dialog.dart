@@ -17,6 +17,7 @@ class ChatDialog extends StatefulWidget {
   final String farmerId;
   final String cropId;
   final FlutterTts flutterTts;
+  final Color activeColor;
 
   const ChatDialog({
     super.key,
@@ -24,6 +25,7 @@ class ChatDialog extends StatefulWidget {
     required this.farmerId,
     required this.cropId,
     required this.flutterTts,
+    required this.activeColor,
   });
 
   @override
@@ -169,12 +171,12 @@ class _ChatDialogState extends State<ChatDialog> {
     return ActionChip(
       label: Text(
         AppTranslations.t(translationKey, widget.lang),
-        style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2E7D32)),
+        style: TextStyle(fontWeight: FontWeight.w600, color: widget.activeColor),
       ),
-      backgroundColor: const Color(0xFF2E7D32).withAlpha(15),
+      backgroundColor: widget.activeColor.withAlpha(15),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: const Color(0xFF2E7D32).withAlpha(40)),
+        side: BorderSide(color: widget.activeColor.withAlpha(40)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       onPressed: () => _sendMessage(AppTranslations.t(translationKey, widget.lang)),
@@ -196,13 +198,13 @@ class _ChatDialogState extends State<ChatDialog> {
           // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF2E7D32), Color(0xFF689F38)],
+                colors: [widget.activeColor, widget.activeColor.withAlpha(200)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(24),
                 topRight: Radius.circular(24),
               ),
@@ -312,7 +314,7 @@ class _ChatDialogState extends State<ChatDialog> {
                 ),
                 const SizedBox(width: 8),
                 CircleAvatar(
-                  backgroundColor: _isListening ? Colors.redAccent : const Color(0xFF2E7D32),
+                  backgroundColor: _isListening ? Colors.redAccent : widget.activeColor,
                   child: IconButton(
                     icon: Icon(
                       _isTyping 

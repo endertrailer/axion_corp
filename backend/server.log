@@ -332,3 +332,4 @@ Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust
 2026/02/27 05:11:10 ⚠ OSRM API failed – using haversine fallback
 2026/02/27 05:11:10 ⚠ OSRM API failed – using haversine fallback
 [GIN] 2026/02/27 - 05:11:10 | 200 |  6.164998519s |       127.0.0.1 | GET      "/api/v1/recommendation?farmer_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890&crop_id=a1b2c3d4-5678-2345-7890-123456789012&lang=en&lat=21.167572&lon=79.068928"
+2026/02/27 05:27:29 [worker] Fetching Open-Meteo weather updates...
